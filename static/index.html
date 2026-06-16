@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SarkariSwarm - Auto-Fill Sarkari Exam Forms & Live Job Alerts</title>
+    <meta name="description" content="SarkariSwarm is India's leading AI-powered form filling assistant. Get live job notifications from FreeJobAlert, UPSC, SSC, Bank PO, and autofill forms securely using Zero-Knowledge encryption.">
+    <meta name="keywords" content="Sarkari Result, Sarkari Job, Free Job Alert, Govt Job Notification, Form Auto-filler, Swarm Agents, UPSC, SSC CGL, Bihar SSC, UPPSC, BPSC, SarkariSwarm">
+    <meta name="author" content="SarkariSwarm Team">
+    <meta property="og:title" content="SarkariSwarm - AI-Powered Form Filling Assistant">
+    <meta property="og:description" content="Get live job notifications and autofill forms securely using local zero-knowledge cryptography.">
+    <meta property="og:type" content="website">
+    <!-- CSS stylesheet link -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Main Wrapper mirroring FreeJobAlert Structure -->
+    <div class="fja-wrapper">
+        
+        <!-- TOP BRANDING HEADER -->
+        <header class="fja-header">
+            <div class="fja-header-top">
+                <div class="fja-logo" onclick="location.reload()">
+                    <div class="logo-icon-svg" style="background: linear-gradient(135deg, #1e5aab, #06b6d4); color: white; width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 1.25rem; font-weight: 800; box-shadow: 0 0 15px rgba(30, 90, 171, 0.4);">
+                        SS
+                    </div>
+                    <div class="logo-txt-group">
+                        <span class="logo-main-text">SarkariSwarm</span>
+                        <span class="logo-sub-text">AI Form Filler & Live Sarkari Results</span>
+                    </div>
+                </div>
+                
+                <div class="fja-header-buttons">
+                    <a href="https://wa.me/#" target="_blank" class="fja-btn fja-btn-whatsapp">
+                        <i class="fa-brands fa-whatsapp"></i> Join Whatsapp
+                    </a>
+                    <button class="fja-btn fja-btn-support">
+                        <i class="fa-solid fa-hands-praying"></i> Support SarkariSwarm!
+                    </button>
+                    <button class="fja-btn fja-btn-sarkari">
+                        <i class="fa-solid fa-graduation-cap"></i> Sarkari Result
+                    </button>
+                </div>
+            </div>
+
+            <!-- Enhanced Search Box -->
+            <div class="fja-search-bar">
+                <div class="search-inner">
+                    <span class="search-label">ENHANCED BY</span>
+                    <img src="https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_74x24dp.png" alt="Google" style="height: 18px; margin-right: 8px;">
+                    <input type="text" id="global-search" placeholder="Search latest notifications, admit cards, exam results..." oninput="handleSearch(this.value)">
+                    <i class="fa-solid fa-magnifying-glass search-btn-icon"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- MAIN CONTAINER -->
+        <div class="fja-body-grid">
+            
+            <!-- LEFT COLUMN: SIDEBAR MENU -->
+            <nav class="fja-sidebar">
+                <div class="sidebar-header">Notifications</div>
+                <ul class="sidebar-links">
+                    <li onclick="filterCategory('all')"><i class="fa-solid fa-chevron-right"></i> Latest Notifications</li>
+                    <li onclick="filterCategory('Central Jobs')"><i class="fa-solid fa-chevron-right"></i> Central Jobs</li>
+                    <li onclick="filterCategory('State Jobs')"><i class="fa-solid fa-chevron-right"></i> State Jobs</li>
+                    <li onclick="filterCategory('Bank Jobs')"><i class="fa-solid fa-chevron-right"></i> Bank Jobs</li>
+                    <li onclick="filterCategory('Railway Jobs')"><i class="fa-solid fa-chevron-right"></i> Railway Jobs</li>
+                    <li><i class="fa-solid fa-chevron-right"></i> Anganwadi Recruitment</li>
+                    <li><i class="fa-solid fa-chevron-right"></i> Forest Jobs</li>
+                    <li><i class="fa-solid fa-chevron-right"></i> Govt Jobs without Exams</li>
+                    <li><i class="fa-solid fa-chevron-right"></i> Female Govt Jobs</li>
+                    <li><i class="fa-solid fa-chevron-right"></i> EDUCATION</li>
+                    <li><i class="fa-solid fa-chevron-right"></i> Free Mock Test</li>
+                    
+                    <!-- Highlighted Active Announcements Block -->
+                    <li class="active-announcements"><i class="fa-solid fa-chevron-right"></i> Latest Announcements</li>
+                    
+                    <li><i class="fa-solid fa-chevron-right"></i> Sarkari Result</li>
+                    <li><i class="fa-solid fa-chevron-right"></i> Admit Card</li>
+                    <li><i class="fa-solid fa-chevron-right"></i> Exam Results</li>
+                </ul>
+            </nav>
+
+            <!-- RIGHT COLUMN: MAIN WORKSPACE CONTENT -->
+            <main class="fja-content">
+                
+                <!-- CLOSING SOON GRID SECTION -->
+                <section class="closing-soon-section">
+                    <div class="section-title-bar">Closing Soon</div>
+                    <div class="closing-soon-grid" id="closing-soon-container">
+                        <!-- Card 1: Red -->
+                        <div class="closing-card card-red">
+                            <div class="card-badge">6 DAYS LEFT</div>
+                            <div class="card-desc" onclick="triggerAutoFill('SSC CGL Group B & Group C Online Form 2026', 'https://ssc.gov.in')">SSC CGL 12256 Group B & Group C Online Form 2026</div>
+                            <button class="auto-apply-pill" onclick="triggerAutoApply('SSC CGL Group B & Group C Online Form 2026', 'https://ssc.gov.in')">
+                                <i class="fa-solid fa-bolt"></i> Auto Apply
+                            </button>
+                        </div>
+                        <!-- Card 2: Orange -->
+                        <div class="closing-card card-orange">
+                            <div class="card-badge">6 DAYS LEFT</div>
+                            <div class="card-desc" onclick="triggerAutoFill('Central Bank of India Apprentice Recruitment 2026', 'https://www.centralbankofindia.co.in')">Central Bank of India 4,500 Apprentice Recruitment 2026</div>
+                            <button class="auto-apply-pill" onclick="triggerAutoApply('Central Bank of India Apprentice Recruitment 2026', 'https://www.centralbankofindia.co.in')">
+                                <i class="fa-solid fa-bolt"></i> Auto Apply
+                            </button>
+                        </div>
+                        <!-- Card 3: Green -->
+                        <div class="closing-card card-green">
+                            <div class="card-badge">7 DAYS LEFT</div>
+                            <div class="card-desc" onclick="triggerAutoFill('RSSB Computer Instructor Online Form 2026', 'https://rsmssb.rajasthan.gov.in')">RSSB 3951 Senior and Basic Computer Instructor Online Form 2026</div>
+                            <button class="auto-apply-pill" onclick="triggerAutoApply('RSSB Computer Instructor Online Form 2026', 'https://rsmssb.rajasthan.gov.in')">
+                                <i class="fa-solid fa-bolt"></i> Auto Apply
+                            </button>
+                        </div>
+                        <!-- Card 4: Blue -->
+                        <div class="closing-card card-blue">
+                            <div class="card-badge">2 DAYS LEFT</div>
+                            <div class="card-desc" onclick="triggerAutoFill('UPSSSC Lower PCS Online Form 2026', 'https://upsssc.gov.in')">UPSSSC 2516 Lower PCS Online Form 2026</div>
+                            <button class="auto-apply-pill" onclick="triggerAutoApply('UPSSSC Lower PCS Online Form 2026', 'https://upsssc.gov.in')">
+                                <i class="fa-solid fa-bolt"></i> Auto Apply
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TODAY LIVE UPDATES SECTION -->
+                <section class="live-updates-section">
+                    <div class="live-header">
+                        <span class="live-dot"></span> Today LIVE Updates
+                    </div>
+                    <div class="live-list" id="live-updates-container">
+                        <!-- Loaded dynamically via JavaScript scraper -->
+                        <div class="fja-loading">
+                            <i class="fa-solid fa-spinner fa-spin"></i>
+                            <p>Loading latest government job updates live...</p>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- SWARM OPERATIONS CENTER DRAWERS (SLIDES IN FROM THE RIGHT) -->
+    <div class="swarm-drawer-overlay" id="swarm-drawer">
+        <div class="swarm-drawer">
+            <div class="drawer-header">
+                <div class="drawer-header-left">
+                    <i class="fa-solid fa-network-wired"></i>
+                    <h3>Swarm Operations Console</h3>
+                </div>
+                <button class="close-drawer-btn" onclick="closeDrawer()">&times;</button>
+            </div>
+            
+            <!-- Drawer Tabs -->
+            <nav class="drawer-tabs">
+                <button class="drawer-tab-btn active" onclick="switchDrawerTab('tab-autofill')">
+                    <i class="fa-solid fa-keyboard"></i> Profile & Autofill
+                </button>
+                <button class="drawer-tab-btn" onclick="switchDrawerTab('tab-pipeline')" id="pipeline-tab-btn">
+                    <i class="fa-solid fa-desktop"></i> Live Monitor
+                </button>
+                <button class="drawer-tab-btn" onclick="switchDrawerTab('tab-security')">
+                    <i class="fa-solid fa-vault"></i> ZK Cryptography
+                </button>
+            </nav>
+
+            <!-- DRAWER TAB 1: Profile & Autofill Form -->
+            <div id="tab-autofill" class="drawer-tab-content active">
+                <form id="submission-form" onsubmit="deploySwarmTask(event)">
+                    <div class="drawer-form-group">
+                        <label for="chat-command">Job Instruction Command</label>
+                        <textarea id="chat-command" class="drawer-control" required></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="drawer-form-group">
+                            <label for="user-name">Full Name</label>
+                            <input type="text" id="user-name" class="drawer-control" placeholder="Bob Dylan" required>
+                        </div>
+                        <div class="drawer-form-group">
+                            <label for="user-id">User ID</label>
+                            <input type="number" id="user-id" class="drawer-control" value="42" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="drawer-form-group">
+                            <label for="aadhaar-number">Aadhaar Card Number</label>
+                            <input type="text" id="aadhaar-number" class="drawer-control" placeholder="111122223333" required>
+                        </div>
+                        <div class="drawer-form-group">
+                            <label for="phone-number">Mobile Number</label>
+                            <input type="tel" id="phone-number" class="drawer-control" placeholder="9876543210" required>
+                        </div>
+                    </div>
+
+                    <div class="drawer-form-group">
+                        <label for="email-address">Email Address</label>
+                        <input type="email" id="email-address" class="drawer-control" placeholder="user@gmail.com" required>
+                    </div>
+
+                    <div class="drawer-form-group">
+                        <label for="exam-center">Preferred Exam Center</label>
+                        <input type="text" id="exam-center" class="drawer-control" placeholder="e.g. Center A">
+                    </div>
+
+                    <div class="drawer-form-group">
+                        <label for="passphrase">Local Decryption Passphrase</label>
+                        <input type="password" id="passphrase" class="drawer-control" placeholder="passphrase for Zero-Knowledge lock" required>
+                    </div>
+
+                    <button type="submit" class="deploy-swarm-btn">
+                        <i class="fa-solid fa-rocket"></i> Deploy Agent Swarm
+                    </button>
+                </form>
+            </div>
+
+            <!-- DRAWER TAB 2: Live Monitor Pipeline -->
+            <div id="tab-pipeline" class="drawer-tab-content">
+                <div class="monitor-container">
+                    
+                    <!-- Steps & Consensus -->
+                    <div class="monitor-row">
+                        <div class="status-gauge-box">
+                            <h5>Agent Swarm Pipeline</h5>
+                            <div class="steps-progress" id="steps-container">
+                                <!-- Step status elements -->
+                            </div>
+                        </div>
+
+                        <div class="status-gauge-box">
+                            <h5>QA Consensus</h5>
+                            <div class="consensus-circle">
+                                <span id="consensus-percent">0%</span>
+                            </div>
+                            <div class="fja-progress-bar">
+                                <div class="fja-progress-fill" id="consensus-fill"></div>
+                            </div>
+                            <div class="consensus-verdict" id="consensus-verdict">Awaiting reviews...</div>
+                        </div>
+                    </div>
+
+                    <!-- Browser Screen Simulation -->
+                    <div class="drawer-section">
+                        <h5>Playwright Live Sandbox Track</h5>
+                        <div class="browser-wrapper">
+                            <div class="browser-topbar">
+                                <div class="dots-left">
+                                    <span class="dot-c red-c"></span>
+                                    <span class="dot-c yellow-c"></span>
+                                    <span class="dot-c green-c"></span>
+                                </div>
+                                <div class="url-input" id="browser-url">about:blank</div>
+                            </div>
+                            <div class="browser-body" id="browser-viewport">
+                                <div class="no-sandbox">
+                                    <i class="fa-solid fa-compass"></i>
+                                    <p>Playwright sandbox inactive.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Log terminal -->
+                    <div class="drawer-section">
+                        <h5>Real-time Agent Swarm Audit Logs</h5>
+                        <div class="logs-console" id="terminal-logs">
+                            <div class="log-line log-system">[System] Swarm log gateway connection active.</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- DRAWER TAB 3: Zero-Knowledge Cryptography Vault -->
+            <div id="tab-security" class="drawer-tab-content">
+                <div class="security-vault-container">
+                    <div class="vault-alert">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <span><strong>Zero-Knowledge Security:</strong> Your database inputs are strictly isolated.</span>
+                    </div>
+
+                    <div class="vault-block">
+                        <h5>Encrypted Context stored in local db</h5>
+                        <div class="code-editor" id="encrypted-json">
+{
+  "status": "No active task. Deploy a swarm task to view the isolated encryption record."
+}
+                        </div>
+                    </div>
+
+                    <div class="vault-block">
+                        <h5>Local Passphrase Decryptor Check</h5>
+                        <div class="drawer-form-group">
+                            <input type="password" id="decrypt-passphrase" class="drawer-control" placeholder="Enter original secret passphrase">
+                        </div>
+                        <button class="deploy-swarm-btn secondary-btn" onclick="verifyDecryption()">
+                            <i class="fa-solid fa-unlock"></i> Verify Local Decrypt
+                        </button>
+                        <div class="code-editor" id="decrypted-json" style="height: 120px; margin-top: 0.75rem;">
+Awaiting passphrase verify...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- OTP Code Modal Dialog Popup -->
+    <div class="otp-modal-overlay" id="otp-dialog">
+        <div class="otp-modal-card">
+            <div class="otp-card-icon">
+                <i class="fa-solid fa-shield-cat"></i>
+            </div>
+            <h4>OTP Validation Signal Requested</h4>
+            <p>The form automation requires an OTP challenge response. Please type the 6-digit OTP code below.</p>
+            <div class="otp-code-inputs">
+                <input type="text" class="otp-code-box" maxlength="1" onkeyup="focusNextOtp(this, 1)">
+                <input type="text" class="otp-code-box" maxlength="1" onkeyup="focusNextOtp(this, 2)">
+                <input type="text" class="otp-code-box" maxlength="1" onkeyup="focusNextOtp(this, 3)">
+                <input type="text" class="otp-code-box" maxlength="1" onkeyup="focusNextOtp(this, 4)">
+                <input type="text" class="otp-code-box" maxlength="1" onkeyup="focusNextOtp(this, 5)">
+                <input type="text" class="otp-code-box" maxlength="1" onkeyup="focusNextOtp(this, 6)">
+            </div>
+            <div class="otp-modal-buttons">
+                <button class="otp-modal-btn cancel-btn" onclick="closeOtpModal()">Dismiss</button>
+                <button class="otp-modal-btn confirm-btn" onclick="submitOtpCode()">Submit OTP</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Javascript Core controller -->
+    <script src="app.js"></script>
+</body>
+</html>

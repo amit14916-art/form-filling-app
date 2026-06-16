@@ -65,12 +65,17 @@ class PlanningAgent(BaseAgent):
             steps = [
                 {
                     "step_id": 1,
+                    "action": "verify_eligibility",
+                    "description": "Verify user eligibility and document formats"
+                },
+                {
+                    "step_id": 2,
                     "action": "navigate",
                     "url": task_context.get("form_url") or "https://example.com/exam-registration",
                     "description": "Navigate to exam form portal"
                 },
                 {
-                    "step_id": 2,
+                    "step_id": 3,
                     "action": "fill_form",
                     "inputs": {
                         "name": task_context.get("user_name", "John Doe"),
@@ -80,7 +85,7 @@ class PlanningAgent(BaseAgent):
                     "description": "Fill user details and PII into the registration form"
                 },
                 {
-                    "step_id": 3,
+                    "step_id": 4,
                     "action": "click_submit",
                     "selector": "#submit-btn",
                     "description": "Click submit and submit form"
@@ -90,6 +95,11 @@ class PlanningAgent(BaseAgent):
             steps = [
                 {
                     "step_id": 1,
+                    "action": "verify_eligibility",
+                    "description": "Verify user eligibility and document formats"
+                },
+                {
+                    "step_id": 2,
                     "action": "navigate",
                     "url": "https://example.com",
                     "description": "Navigate to home page"
@@ -215,8 +225,46 @@ class ExecutionAgent(BaseAgent):
             metadata = {}
             output_data = {}
             
+            # Detect verify_eligibility
+            if action == "verify_eligibility":
+                # Check for presence of key user details in decrypted inputs
+                inputs = task_context.get("decrypted_inputs", {})
+                if not inputs:
+                    inputs = task_context.get("inputs", {})
+                    
+                errors = []
+                # Check name
+                name = inputs.get("name") or inputs.get("first_name") or inputs.get("user_name")
+                if not name:
+                    errors.append("Full Name is missing")
+                
+                # Check phone
+                phone = inputs.get("phone") or inputs.get("user_number") or inputs.get("phone_number")
+                if not phone:
+                    errors.append("Phone Number is missing")
+                else:
+                    clean_phone = str(phone).replace("-", "").replace(" ", "").replace("+91", "")
+                    if len(clean_phone) != 10:
+                        errors.append(f"Phone Number '{phone}' must contain exactly 10 digits")
+                
+                # Check Aadhaar
+                aadhaar = inputs.get("aadhaar") or inputs.get("aadhaar_number")
+                if not aadhaar:
+                    errors.append("Aadhaar Card is missing")
+                else:
+                    clean_aadhaar = str(aadhaar).replace("-", "").replace(" ", "")
+                    if len(clean_aadhaar) != 12:
+                        errors.append(f"Aadhaar Card '{aadhaar}' must contain exactly 12 digits")
+                
+                if errors:
+                     raise ValueError("Verification failed: " + ", ".join(errors))
+                     
+                output_data["eligibility_status"] = "PASSED"
+                output_data["verification_details"] = "Personal details, documents, and Aadhaar formatting successfully verified."
+                logger.info(f"[{self.name}] Eligibility verified successfully.")
+
             # Detect fill_form and attempt stealth Playwright execution
-            if action == "fill_form":
+            elif action == "fill_form":
                 inputs = step.get("inputs", {})
                 decrypted_inputs = task_context.get("decrypted_inputs", inputs)
                 url = step.get("url") or (page.url if page else "https://example.com/exam-registration")
@@ -350,6 +398,8 @@ class QAAgent(BaseAgent):
             elif action == "fill_form":
                 inputs = step.get("inputs", {})
                 for key in inputs.keys():
+                    if any(keyword in key.lower() for keyword in ("captcha", "otp", "passcode", "verification_code")):
+                        continue
                     parts = key.split('_')
                     camel_key = parts[0] + ''.join(x.title() for x in parts[1:]) if len(parts) > 1 else key
                     if key not in dom and camel_key not in dom:

@@ -1,11 +1,19 @@
 import uuid
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, BackgroundTasks, HTTPException, status, APIRouter
+from fastapi import FastAPI, BackgroundTasks, HTTPException, status, APIRouter, WebSocket, WebSocketDisconnect
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+import requests
+import xml.etree.ElementTree as ET
+from datetime import datetime
+import logging
+import asyncio
 
 from swarm_core.orchestrator import CEOOrchestrator
 from swarm_core.crypto_utils import derive_key, decrypt_pii_fields
+
+logger = logging.getLogger("SarkariSwarm")
 
 # Global Orchestrator Instance
 orchestrator = CEOOrchestrator()
@@ -31,12 +39,17 @@ async def lifespan(app: FastAPI):
     # Launch concurrently in async task loop
     app.state.verification_task = asyncio.create_task(global_verification_listener())
     
+    # Launch background job scraper loop
+    app.state.scraper_task = asyncio.create_task(job_scraper_background_loop())
+    
     # Publish verification ping
     await orchestrator.broker.publish("system:verify", {"status": "HEALTHY", "broker": "UP"})
     yield
     # Shutdown: Clean connection resources
     if hasattr(app.state, "verification_task"):
         app.state.verification_task.cancel()
+    if hasattr(app.state, "scraper_task"):
+        app.state.scraper_task.cancel()
     await orchestrator.shutdown()
 
 app = FastAPI(
@@ -223,5 +236,168 @@ async def submit_otp(task_id: str, payload: SubmitOtpRequest):
             detail=f"Failed to process OTP webhook: {str(err)}"
         )
 
-# Include the router in the app
+# Include the routers in the app
 app.include_router(router)
+
+# Job Alerts Router with WebSockets support
+jobs_router = APIRouter(prefix="/api/v1/jobs")
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: dict):
+        for connection in self.active_connections:
+            try:
+                await connection.send_json(message)
+            except Exception:
+                pass
+
+manager = ConnectionManager()
+latest_jobs_cache = []
+
+FALLBACK_JOBS = [
+    {
+        "title": "UPSC Civil Services Examination 2026 - Apply Online for 1056 Posts",
+        "link": "https://upsconline.nic.in",
+        "date": "2026-06-16T12:00:00Z",
+        "category": "Central Jobs"
+    },
+    {
+        "title": "SSC Combined Graduate Level (CGL) 2026 - 15000+ Vacancies Announced",
+        "link": "https://ssc.gov.in",
+        "date": "2026-06-15T10:30:00Z",
+        "category": "Central Jobs"
+    },
+    {
+        "title": "BPSC 71st Civil Services (Pre) Exam 2026 - Notification Out",
+        "link": "https://bpsc.bih.nic.in",
+        "date": "2026-06-14T08:15:00Z",
+        "category": "State Jobs"
+    },
+    {
+        "title": "IBPS Bank PO / MT XIV Recruitment 2026 - Apply Online for 4455 Posts",
+        "link": "https://www.ibps.in",
+        "date": "2026-06-12T14:20:00Z",
+        "category": "Bank Jobs"
+    },
+    {
+        "title": "RRB NTPC Graduate & Under Graduate Posts 2026 - 11558 Openings",
+        "link": "https://www.rrbcdg.gov.in",
+        "date": "2026-06-10T09:00:00Z",
+        "category": "Railway Jobs"
+    }
+]
+
+async def fetch_rss_jobs() -> List[dict]:
+    try:
+        url = "https://www.freejobalert.com/feed/"
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        response = requests.get(url, headers=headers, timeout=5)
+        if response.status_code != 200:
+            return []
+            
+        root = ET.fromstring(response.content)
+        jobs = []
+        for item in root.findall(".//item")[:15]:
+            title = item.find("title").text
+            link = item.find("link").text
+            
+            # Extract category
+            category = "Govt Jobs"
+            title_lower = title.lower()
+            if "bank" in title_lower or "ibps" in title_lower or "sbi" in title_lower:
+                category = "Bank Jobs"
+            elif "ssc" in title_lower or "upsc" in title_lower:
+                category = "Central Jobs"
+            elif "psc" in title_lower or "state" in title_lower:
+                category = "State Jobs"
+            elif "railway" in title_lower or "rrb" in title_lower:
+                category = "Railway Jobs"
+                
+            # Parse publication date
+            pub_date_raw = item.find("pubDate").text
+            try:
+                pub_date = datetime.strptime(pub_date_raw[:25].strip(), "%a, %d %b %Y %H:%M:%S").isoformat() + "Z"
+            except Exception:
+                pub_date = datetime.utcnow().isoformat() + "Z"
+                
+            jobs.append({
+                "title": title,
+                "link": link,
+                "date": pub_date,
+                "category": category
+            })
+        return jobs
+    except Exception as e:
+        logger.error(f"Error fetching jobs: {e}")
+        return []
+
+async def job_scraper_background_loop():
+    global latest_jobs_cache
+    logger.info("Initializing latest jobs cache from FreeJobAlert...")
+    initial_jobs = await fetch_rss_jobs()
+    if initial_jobs:
+        latest_jobs_cache = initial_jobs
+    else:
+        latest_jobs_cache = FALLBACK_JOBS.copy()
+        
+    while True:
+        try:
+            await asyncio.sleep(120)  # poll every 2 minutes
+            logger.info("Polling FreeJobAlert feed for updates...")
+            new_fetched = await fetch_rss_jobs()
+            if not new_fetched:
+                continue
+                
+            existing_links = {j["link"] for j in latest_jobs_cache}
+            new_items_found = []
+            
+            for item in reversed(new_fetched): # oldest to newest
+                if item["link"] not in existing_links:
+                    logger.info(f"Detected new job notification: {item['title']}")
+                    latest_jobs_cache.insert(0, item)
+                    new_items_found.append(item)
+                    
+            if len(latest_jobs_cache) > 50:
+                latest_jobs_cache = latest_jobs_cache[:50]
+                
+            # Broadcast new items
+            for new_job in new_items_found:
+                await manager.broadcast({
+                    "type": "new_job",
+                    "job": new_job
+                })
+        except Exception as e:
+            logger.error(f"Error in job scraper background worker: {e}")
+
+@jobs_router.get("/latest")
+async def get_latest_jobs():
+    global latest_jobs_cache
+    if not latest_jobs_cache:
+        return FALLBACK_JOBS
+    return latest_jobs_cache
+
+@jobs_router.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+    except Exception:
+        manager.disconnect(websocket)
+
+app.include_router(jobs_router)
+
+# Serve static frontend files
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
