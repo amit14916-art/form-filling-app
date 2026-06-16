@@ -8,3 +8,6 @@ venv/
 .gemini/
 .idea/
 .vscode/
+uploads/
+*.db
+

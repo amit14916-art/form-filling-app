@@ -3,6 +3,7 @@ from typing import Dict, Any, Optional, List
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, BackgroundTasks, HTTPException, status, APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import requests
 import xml.etree.ElementTree as ET
@@ -12,6 +13,12 @@ import asyncio
 
 from swarm_core.orchestrator import CEOOrchestrator
 from swarm_core.crypto_utils import derive_key, decrypt_pii_fields
+from database.db import init_db
+from auth.auth import router as auth_router
+from routers.profile import router as profile_router
+from routers.eligibility import router as eligibility_router
+from routers.dashboard import router as dashboard_router
+from routers.payment import router as payment_router
 
 logger = logging.getLogger("SarkariSwarm")
 
@@ -23,6 +30,9 @@ async def lifespan(app: FastAPI):
     import asyncio
     import logging
     logger = logging.getLogger("CEOOrchestrator")
+
+    # Startup: Initialize Database tables
+    await init_db()
 
     # Startup: Initialize Redis broker connection
     await orchestrator.start()
@@ -58,6 +68,16 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# CORS middleware configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # APIRouter with prefix /api/v1/chat-gateway
 router = APIRouter(prefix="/api/v1/chat-gateway")
@@ -399,5 +419,37 @@ async def websocket_endpoint(websocket: WebSocket):
 
 app.include_router(jobs_router)
 
+@app.websocket("/ws/{task_id}")
+async def websocket_task_status(websocket: WebSocket, task_id: str):
+    await websocket.accept()
+    logger.info(f"[WebSocket] Client connected for task_id: {task_id}")
+    try:
+        channel = f"task_events:{task_id}"
+        # Start listening to events from the EventBroker
+        async for event in orchestrator.broker.listen(channel):
+            logger.info(f"[WebSocket task_id={task_id}] Sending event: {event}")
+            await websocket.send_json(event)
+            # Do not close on payment_pending because the payment callback will push the submitted status
+            if event.get("status") in ("submitted", "failed"):
+                break
+    except WebSocketDisconnect:
+        logger.info(f"[WebSocket] Client disconnected for task_id: {task_id}")
+    except Exception as e:
+        logger.error(f"[WebSocket] Error in task status websocket: {e}")
+
+# Include Phase 1 and Phase 2 routers
+app.include_router(auth_router)
+app.include_router(profile_router)
+app.include_router(eligibility_router)
+app.include_router(dashboard_router)
+app.include_router(payment_router, prefix="/api/v1")
+app.include_router(payment_router)
+
+# Serve uploads StaticFiles
+import os
+os.makedirs("uploads", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 # Serve static frontend files
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
+

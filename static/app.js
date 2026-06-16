@@ -12,6 +12,7 @@ const wsUrl = `${wsProtocol}${window.location.host}/api/v1/jobs/ws`;
 document.addEventListener('DOMContentLoaded', () => {
     fetchLatestJobs();
     initWebSocket();
+    autoLoginAndLoadProfile();
     
     // Request notification permissions
     if (window.Notification && Notification.permission === 'default') {
@@ -241,145 +242,229 @@ function closeDrawer() {
     document.getElementById('swarm-drawer').classList.remove('active');
 }
 
-// Deploy Swarm Task
+// Deploy Swarm Task (Auto-Apply)
 async function deploySwarmTask(event) {
-    event.preventDefault();
+    if (event) event.preventDefault();
+    
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+        appendLog(`[Error] Not authenticated. Please reload the page.`, 'log-line log-error');
+        return;
+    }
     
     const commandText = document.getElementById('chat-command').value;
-    const name = document.getElementById('user-name').value;
-    const userId = parseInt(document.getElementById('user-id').value);
-    const aadhaar = document.getElementById('aadhaar-number').value;
-    const phone = document.getElementById('phone-number').value;
-    const email = document.getElementById('email-address').value;
-    const center = document.getElementById('exam-center').value;
     const passphrase = document.getElementById('passphrase').value;
     
-    // Build profile structure
-    const fullChatMessage = `${commandText}. PII details:
-- Name: ${name}
-- Aadhaar: ${aadhaar}
-- Phone: ${phone}
-- Email: ${email}
-- Preferred Exam Center: ${center}
-- Passphrase: ${passphrase}`;
+    // Extract exam name from instruction command
+    let examName = "UPSC Civil Services Examination 2026";
+    if (commandText.includes("for: ")) {
+        examName = commandText.split("for: ")[1].split(".")[0].trim();
+    } else if (commandText.includes("for ")) {
+        examName = commandText.split("for ")[1].split(".")[0].trim();
+    }
     
-    // Show initializing logs
-    const consoleLogs = document.getElementById('terminal-logs');
-    consoleLogs.innerHTML = `<div class="log-line log-system">[System] Triggering Zero-Knowledge key derivation locally...</div>`;
+    // Step 1: Save/update the user profile first to capture any changes
+    appendLog(`[System] Saving profile changes...`, 'log-line log-system');
+    const profilePayload = {
+        full_name: document.getElementById('user-name').value,
+        dob: document.getElementById('dob').value || '1998-05-15',
+        gender: document.getElementById('gender').value,
+        category: document.getElementById('category').value,
+        state: document.getElementById('state').value || 'Bihar',
+        qualification: document.getElementById('qualification').value,
+        phone: document.getElementById('phone-number').value,
+        aadhaar: document.getElementById('aadhaar-number').value,
+        email: document.getElementById('email-address').value
+    };
     
     try {
-        const response = await fetch('/api/v1/chat-gateway/submit', {
+        const profileResponse = await fetch('/profile', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                user_id: userId,
-                chat_message: fullChatMessage
-            })
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(profilePayload)
         });
         
-        if (!response.ok) throw new Error("Gateway failed to submit");
+        if (!profileResponse.ok) {
+            const errData = await profileResponse.json();
+            throw new Error(errData.detail || "Failed to save profile");
+        }
         
-        const data = await response.json();
-        activeTaskId = data.task_id;
+        appendLog(`[System] Profile saved successfully.`, 'log-line log-success');
+    } catch (err) {
+        appendLog(`[Error] Profile save failed: ${err.message}`, 'log-line log-error');
+        return;
+    }
+    
+    // Step 2: Trigger /exams/apply/{exam_name}
+    appendLog(`[System] Initiating application pipeline for ${examName}...`, 'log-line log-system');
+    
+    // Reset browser views in UI
+    document.getElementById('browser-viewport').innerHTML = `
+        <div class="no-sandbox">
+            <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.5rem; color: var(--accent);"></i>
+            <p style="margin-top: 5px;">Launching bot-bypass Playwright sandbox...</p>
+        </div>
+    `;
+    document.getElementById('browser-url').innerText = "about:blank";
+    
+    // Show pipeline tab
+    document.getElementById('pipeline-tab-btn').click();
+    
+    try {
+        const applyResponse = await fetch(`/exams/apply/${encodeURIComponent(examName)}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ passphrase })
+        });
         
-        appendLog(`[System] Task created successfully. Task ID: ${activeTaskId}`, 'success');
-        appendLog(`[Security] PII structures fully isolated. Local DB updated.`, 'system');
+        const applyData = await applyResponse.json();
+        if (!applyResponse.ok) {
+            throw new Error(applyData.detail || "Failed to trigger apply endpoint");
+        }
         
-        // Reset browser views
-        document.getElementById('browser-viewport').innerHTML = `
-            <div class="no-sandbox">
-                <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.5rem; color: var(--accent);"></i>
-                <p style="margin-top: 5px;">Launching bot-bypass Playwright sandbox...</p>
-            </div>
-        `;
-        document.getElementById('browser-url').innerText = "about:blank";
+        activeTaskId = applyData.task_id;
+        const websocketUrl = applyData.websocket_url;
         
-        // Show pipeline tab
-        document.getElementById('pipeline-tab-btn').click();
+        appendLog(`[System] Pipeline scheduled. Task ID: ${activeTaskId}`, 'log-line log-success');
         
-        // Start polling loop
-        if (statusInterval) clearInterval(statusInterval);
-        statusInterval = setInterval(pollTaskProgress, 1500);
-        
-        // Read isolated vault
-        fetchIsolatedState();
+        // Connect to WebSocket to track status
+        connectToTaskWebSocket(websocketUrl);
         
     } catch (err) {
-        appendLog(`[Error] Deploy failed: ${err.message}`, 'error');
+        appendLog(`[Error] Apply failed: ${err.message}`, 'log-line log-error');
+        document.getElementById('browser-viewport').innerHTML = `
+            <div class="no-sandbox" style="color: var(--danger);">
+                <i class="fa-solid fa-triangle-exclamation" style="font-size: 2rem;"></i>
+                <p style="margin-top: 5px;">Pipeline launch failed: ${err.message}</p>
+            </div>
+        `;
     }
 }
 
-// Poll Task Status
-async function pollTaskProgress() {
-    if (!activeTaskId) return;
+let taskSocket = null;
+
+function connectToTaskWebSocket(wsPath) {
+    if (taskSocket) {
+        taskSocket.close();
+    }
     
-    try {
-        const response = await fetch(`/api/v1/chat-gateway/status/${activeTaskId}`);
-        if (!response.ok) throw new Error("Status query failed");
-        
-        const statusData = await response.json();
-        
-        // Render progress lines
-        renderStepsProgress(statusData);
-        
-        // Update Console
-        updateLogsConsole(statusData.logs);
-        
-        // Update Consensus
-        updateConsensusCircle(statusData);
-        
-        // Check complete
-        if (statusData.status === 'COMPLETED' || statusData.status === 'FAILED') {
-            clearInterval(statusInterval);
-            appendLog(`[Swarm] Task finished with status code: ${statusData.status}`, statusData.status === 'COMPLETED' ? 'success' : 'error');
+    // Clear previous logs
+    const consoleLogs = document.getElementById('terminal-logs');
+    consoleLogs.innerHTML = `<div class="log-line log-system">[System] Monitoring task logs in real-time...</div>`;
+    
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    const socketUrl = `${wsProtocol}${window.location.host}${wsPath}`;
+    
+    console.log("Connecting to task websocket:", socketUrl);
+    taskSocket = new WebSocket(socketUrl);
+    
+    taskSocket.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            const status = data.status;
+            const message = data.message;
             
-            if (statusData.status === 'COMPLETED') {
-                const regCode = statusData.outputs?.registration_code || "REG-992184";
+            let logClass = 'log-line';
+            if (status === 'failed') {
+                logClass = 'log-line log-error';
+            } else if (status === 'submitted') {
+                logClass = 'log-line log-success';
+            } else if (status === 'payment_pending') {
+                logClass = 'log-line log-warning';
+            } else if (status === 'processing_payment') {
+                logClass = 'log-line log-warning';
+            }
+            
+            appendLog(`[${status.toUpperCase()}] ${message}`, logClass);
+            
+            // Update pipeline progress UI
+            updateStepsProgressUI(status);
+            
+            // Handle specific status outcomes
+            if (status === 'payment_pending' && data.phonepay_url) {
+                document.getElementById('browser-viewport').innerHTML = `
+                    <div class="no-sandbox" style="color: var(--warning);">
+                        <i class="fa-solid fa-credit-card" style="font-size: 2rem; margin-bottom: 5px;"></i>
+                        <p style="font-weight: bold;">Payment Pending (PhonePe)</p>
+                        <a href="${data.phonepay_url}" target="_blank" class="live-auto-apply-btn" style="display:inline-block; margin-top:10px; text-decoration:none; padding: 8px 12px; background: var(--accent); color: white; border-radius: 4px; font-weight: bold;">
+                            <i class="fa-solid fa-external-link"></i> Pay Now
+                        </a>
+                    </div>
+                `;
+            } else if (status === 'submitted') {
+                const conf = data.confirmation_number || "REG-CONFIRMED";
                 document.getElementById('browser-viewport').innerHTML = `
                     <div class="no-sandbox" style="color: var(--success);">
                         <i class="fa-solid fa-circle-check" style="font-size: 2rem; margin-bottom: 5px;"></i>
-                        <p style="font-weight: bold;">Form Filled Successfully</p>
-                        <p style="font-size: 0.75rem;">Reference Code: ${regCode}</p>
+                        <p style="font-weight: bold;">Form Submitted Successfully</p>
+                        <p style="font-size: 0.75rem;">Confirmation: ${conf}</p>
+                    </div>
+                `;
+            } else if (status === 'failed') {
+                document.getElementById('browser-viewport').innerHTML = `
+                    <div class="no-sandbox" style="color: var(--danger);">
+                        <i class="fa-solid fa-circle-xmark" style="font-size: 2rem; margin-bottom: 5px;"></i>
+                        <p style="font-weight: bold;">Application Failed</p>
+                        <button class="live-auto-apply-btn" onclick="deploySwarmTask()" style="margin-top:10px;">
+                            <i class="fa-solid fa-rotate-right"></i> Retry Application
+                        </button>
                     </div>
                 `;
             }
+        } catch (err) {
+            console.error("Failed to parse WebSocket packet", err);
         }
-        
-    } catch (err) {
-        console.error("Error polling progress", err);
-    }
+    };
+    
+    taskSocket.onclose = () => {
+        console.warn("Task WebSocket closed.");
+    };
 }
 
-// Render pipeline progress indicators
-function renderStepsProgress(data) {
+function updateStepsProgressUI(status) {
     const container = document.getElementById('steps-container');
     container.innerHTML = '';
     
     const steps = [
-        { name: "Eligibility Audit", desc: "Validating user PII and documents" },
-        { name: "Form Navigation", desc: "Stealth loading exam form portal" },
-        { name: "Secure Form Fill", desc: "Decrypting and filling form details" },
-        { name: "Validation & Submit", desc: "Solving captcha and submitting details" },
-        { name: "WhatsApp Alert", desc: "Dispatching receipt validation details" }
+        { name: "Initializing", key: "initializing" },
+        { name: "Creating Account", key: "creating_account" },
+        { name: "Filling Profile", key: "filling_profile" },
+        { name: "Uploading Documents", key: "uploading_documents" },
+        { name: "Processing Payment", key: "processing_payment" }
     ];
     
-    const currentStepIndex = Math.min(data.current_step, steps.length - 1);
+    let currentIdx = -1;
+    for (let i = 0; i < steps.length; i++) {
+        if (status === steps[i].key) {
+            currentIdx = i;
+            break;
+        }
+    }
+    
+    if (status === 'submitted') currentIdx = 5;
+    else if (status === 'payment_pending') currentIdx = 4;
+    else if (status === 'failed') currentIdx = 4;
     
     steps.forEach((step, idx) => {
         const row = document.createElement('div');
         let statusClass = 'step-row';
         
-        if (data.status === 'FAILED' && idx === currentStepIndex) {
-            statusClass += ' active';
-        } else if (idx < currentStepIndex || (data.status === 'COMPLETED' && idx === currentStepIndex)) {
+        if (status === 'failed' && idx === currentIdx) {
+            statusClass += ' active failed';
+        } else if (idx < currentIdx || status === 'submitted') {
             statusClass += ' completed';
-        } else if (idx === currentStepIndex) {
+        } else if (idx === currentIdx) {
             statusClass += ' active';
             
-            // Set browser URL
             const urlInput = document.getElementById('browser-url');
-            if (idx === 1) urlInput.innerText = window.selectedJobUrl || "https://example.com/exam-registration";
-            else if (idx > 1 && urlInput.innerText === "about:blank") urlInput.innerText = "https://example.com/exam-registration";
+            if (idx === 1) urlInput.innerText = window.selectedJobUrl || "https://upsconline.nic.in/otr/registration";
+            else if (idx > 1 && urlInput.innerText === "about:blank") urlInput.innerText = window.selectedJobUrl || "https://upsconline.nic.in/otr/registration";
         }
         
         row.className = statusClass;
@@ -591,5 +676,116 @@ async function verifyDecryption() {
     } catch (err) {
         logViewer.innerText = `[DECRYPT FAIL] Authentication error: ${err.message}`;
         logViewer.style.color = "var(--danger)";
+    }
+}
+
+// Helper: Auto register/login default user on page load
+async function autoLoginAndLoadProfile() {
+    try {
+        const email = "user@example.com";
+        const password = "password123";
+        const phone = "9999999999";
+        
+        // 1. Try to register
+        await fetch('/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, phone })
+        });
+        
+        // 2. Login to obtain JWT token
+        const loginResponse = await fetch('/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        
+        if (loginResponse.ok) {
+            const loginData = await loginResponse.json();
+            const token = loginData.access_token;
+            localStorage.setItem('auth_token', token);
+            console.log("Authenticated default user successfully.");
+            
+            // 3. Load user profile and fill dashboard controls
+            await loadUserProfile(token);
+        }
+    } catch (err) {
+        console.error("Auto login error:", err);
+    }
+}
+
+async function loadUserProfile(token) {
+    try {
+        const response = await fetch('/profile', {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+            const profile = await response.json();
+            document.getElementById('user-name').value = profile.full_name;
+            document.getElementById('dob').value = profile.dob;
+            document.getElementById('gender').value = profile.gender;
+            document.getElementById('category').value = profile.category;
+            document.getElementById('state').value = profile.state;
+            document.getElementById('qualification').value = profile.qualification;
+            document.getElementById('phone-number').value = profile.phone;
+            document.getElementById('email-address').value = profile.email;
+            document.getElementById('aadhaar-number').value = profile.aadhaar_decrypted || "";
+        } else if (response.status === 404) {
+            await saveDefaultProfile(token);
+        }
+    } catch (err) {
+        console.error("Load user profile error:", err);
+    }
+}
+
+async function saveDefaultProfile(token) {
+    const defaultProfile = {
+        full_name: "Amit Kumar",
+        dob: "1998-05-15",
+        gender: "Male",
+        category: "GEN",
+        state: "Bihar",
+        qualification: "Graduate",
+        phone: "9999999999",
+        aadhaar: "987654321098",
+        email: "amit14916@gmail.com"
+    };
+    
+    try {
+        await fetch('/profile', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(defaultProfile)
+        });
+        
+        await uploadMockDocuments(token);
+    } catch (err) {
+        console.error("Save default profile failed", err);
+    }
+}
+
+async function uploadMockDocuments(token) {
+    const docTypes = ["photo", "signature", "aadhaar"];
+    for (const type of docTypes) {
+        try {
+            const fileContent = "MOCK FILE DATA CONTENT";
+            const blob = new Blob([fileContent], { type: "image/jpeg" });
+            const formData = new FormData();
+            formData.append("doc_type", type);
+            formData.append("file", blob, `${type}.jpg`);
+            
+            await fetch('/profile/documents', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+        } catch (err) {
+            console.error(`Mock upload failed for doc_type ${type}`, err);
+        }
     }
 }
