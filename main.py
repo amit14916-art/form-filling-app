@@ -437,6 +437,54 @@ async def websocket_task_status(websocket: WebSocket, task_id: str):
     except Exception as e:
         logger.error(f"[WebSocket] Error in task status websocket: {e}")
 
+from fastapi.responses import StreamingResponse
+from database.db import get_db
+from database.models import User
+from auth.auth import get_current_user
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends
+import json
+
+@app.get("/eligibility/check")
+async def compatibility_check_eligibility(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    from routers.eligibility import get_eligible_exams
+    return await get_eligible_exams(current_user, db)
+
+class CompatibilityApplyRequest(BaseModel):
+    passphrase: Optional[str] = None
+
+@app.post("/apply/{exam_id}")
+async def compatibility_apply_exam(
+    exam_id: str,
+    payload: CompatibilityApplyRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    from routers.eligibility import apply_exam, ApplyRequest
+    request_payload = ApplyRequest(passphrase=payload.passphrase)
+    return await apply_exam(exam_id, request_payload, background_tasks, current_user, db)
+
+@app.get("/apply/status/{task_id}")
+async def compatibility_sse_task_status(task_id: str):
+    async def sse_event_generator():
+        channel = f"task_events:{task_id}"
+        yield f"data: {json.dumps({'status': 'initializing', 'message': 'Connected to progress stream...'})}\n\n"
+        try:
+            async for event in orchestrator.broker.listen(channel):
+                logger.info(f"[SSE task_id={task_id}] Sending event: {event}")
+                yield f"data: {json.dumps(event)}\n\n"
+                if event.get("status") in ("submitted", "failed"):
+                    break
+        except Exception as err:
+            logger.error(f"[SSE task_id={task_id}] Error: {err}")
+            yield f"data: {json.dumps({'status': 'failed', 'message': str(err)})}\n\n"
+
+    return StreamingResponse(sse_event_generator(), media_type="text/event-stream")
+
 # Include Phase 1 and Phase 2 routers
 app.include_router(auth_router)
 app.include_router(profile_router)

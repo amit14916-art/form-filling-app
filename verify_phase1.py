@@ -2,6 +2,7 @@ import unittest
 import os
 import io
 import asyncio
+from fastapi.testclient import TestClient
 
 # Override database connection before importing app
 import database.db

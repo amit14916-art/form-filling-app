@@ -1,290 +1,507 @@
 # Database of Indian Government Exam Portals and Guidelines
+from datetime import date, timedelta
+
+def get_dynamic_last_date(target_date_str: str) -> str:
+    return target_date_str
 
 EXAM_DATABASE = {
     "Central": [
         {
-            "exam_name": "UPSC Civil Services Examination",
-            "conducting_body": "Union Public Service Commission (UPSC)",
+            "exam_name": "UPSC Civil Services 2026",
+            "conducting_body": "Union Public Service Commission",
             "portal_url": "https://upsconline.nic.in",
-            "guidelines": "Aadhaar Card or Govt ID card mandatory. Photo size: 20KB to 300KB (JPG). Signature size: 20KB to 300KB (JPG). Photo ID card upload in PDF format (less than 300KB)."
+            "age_min": 21,
+            "age_max": 32,
+            "qualification": "Graduate",
+            "fees": {"GEN": 100, "OBC": 100, "SC": 0, "ST": 0, "EWS": 100, "PH": 0},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-08-20",
+            "guidelines": "Aadhaar Card or Govt ID card mandatory. Photo size: 20KB to 300KB (JPG). Signature size: 20KB to 300KB (JPG)."
         },
         {
-            "exam_name": "SSC Combined Graduate Level (CGL)",
-            "conducting_body": "Staff Selection Commission (SSC)",
+            "exam_name": "SSC CGL 2026",
+            "conducting_body": "Staff Selection Commission",
             "portal_url": "https://ssc.gov.in",
-            "guidelines": "Live photo capture via website app or app upload. Signature size: 10KB to 20KB (JPG, 4.0 cm width x 2.0 cm height). Aadhaar verification is highly recommended."
+            "age_min": 18,
+            "age_max": 32,
+            "qualification": "Graduate",
+            "fees": {"GEN": 100, "OBC": 100, "SC": 0, "ST": 0, "EWS": 100, "PH": 0},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-07-25",
+            "guidelines": "Live photo capture via website app or app upload. Signature size: 10KB to 20KB (JPG)."
         },
         {
-            "exam_name": "IBPS Bank PO / Clerk",
-            "conducting_body": "Institute of Banking Personnel Selection (IBPS)",
-            "portal_url": "https://www.ibps.in",
-            "guidelines": "Photo: 20KB-50KB (JPG). Signature: 10KB-20KB (JPG, black ink). Left thumb impression: 20KB-50KB (JPG). Hand written declaration: 50KB-100KB (JPG, English, blue/black ink)."
+            "exam_name": "SSC CHSL 2026",
+            "conducting_body": "Staff Selection Commission",
+            "portal_url": "https://ssc.gov.in",
+            "age_min": 18,
+            "age_max": 27,
+            "qualification": "12th",
+            "fees": {"GEN": 100, "OBC": 100, "SC": 0, "ST": 0, "EWS": 100, "PH": 0},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-08-10",
+            "guidelines": "12th marksheets upload."
         },
         {
-            "exam_name": "RRB NTPC & ALP",
-            "conducting_body": "Railway Recruitment Boards (RRB)",
-            "portal_url": "https://www.rrbcdg.gov.in",
-            "guidelines": "Photo: 30KB-70KB (JPG, white background, no cap/goggles). Signature: 30KB-70KB (JPG). SC/ST Certificate upload in PDF format (< 500KB) for free travel pass eligibility."
+            "exam_name": "SSC MTS 2026",
+            "conducting_body": "Staff Selection Commission",
+            "portal_url": "https://ssc.gov.in",
+            "age_min": 18,
+            "age_max": 25,
+            "qualification": "10th",
+            "fees": {"GEN": 100, "OBC": 100, "SC": 0, "ST": 0, "EWS": 100, "PH": 0},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-08-20",
+            "guidelines": "10th pass qualification guidelines."
         },
         {
-            "exam_name": "JEE Main & NEET UG",
-            "conducting_body": "National Testing Agency (NTA)",
+            "exam_name": "SSC GD Constable 2026",
+            "conducting_body": "Staff Selection Commission",
+            "portal_url": "https://ssc.gov.in",
+            "age_min": 18,
+            "age_max": 23,
+            "qualification": "10th",
+            "fees": {"GEN": 100, "OBC": 100, "SC": 0, "ST": 0, "EWS": 100, "PH": 0},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-09-01",
+            "guidelines": "Physical measurement rules."
+        },
+        {
+            "exam_name": "SSC CPO 2026",
+            "conducting_body": "Staff Selection Commission",
+            "portal_url": "https://ssc.gov.in",
+            "age_min": 20,
+            "age_max": 25,
+            "qualification": "Graduate",
+            "fees": {"GEN": 100, "OBC": 100, "SC": 0, "ST": 0, "EWS": 100, "PH": 0},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-08-15",
+            "guidelines": "Sub-inspector recruitment."
+        },
+        {
+            "exam_name": "SSC Stenographer 2026",
+            "conducting_body": "Staff Selection Commission",
+            "portal_url": "https://ssc.gov.in",
+            "age_min": 18,
+            "age_max": 27,
+            "qualification": "12th",
+            "fees": {"GEN": 100, "OBC": 100, "SC": 0, "ST": 0, "EWS": 100, "PH": 0},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-08-30",
+            "guidelines": "Stenography requirements."
+        },
+        {
+            "exam_name": "RRB NTPC 2026",
+            "conducting_body": "Railway Recruitment Board",
+            "portal_url": "https://rrbcdg.gov.in",
+            "age_min": 18,
+            "age_max": 33,
+            "qualification": "Graduate",
+            "fees": {"GEN": 500, "OBC": 500, "SC": 250, "ST": 250, "EWS": 500, "PH": 250, "EX": 0},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-08-10",
+            "guidelines": "Photo: 30KB-70KB (JPG). Signature: 30KB-70KB (JPG)."
+        },
+        {
+            "exam_name": "RRB Group D 2026",
+            "conducting_body": "Railway Recruitment Board",
+            "portal_url": "https://rrbcdg.gov.in",
+            "age_min": 18,
+            "age_max": 33,
+            "qualification": "10th",
+            "fees": {"GEN": 500, "OBC": 500, "SC": 250, "ST": 250, "EWS": 500, "PH": 250, "EX": 0},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-08-25",
+            "guidelines": "Assistant posts."
+        },
+        {
+            "exam_name": "RRB ALP 2026",
+            "conducting_body": "Railway Recruitment Board",
+            "portal_url": "https://rrbcdg.gov.in",
+            "age_min": 18,
+            "age_max": 28,
+            "qualification": "Diploma",
+            "fees": {"GEN": 500, "OBC": 500, "SC": 250, "ST": 250, "EWS": 500, "PH": 250, "EX": 0},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-09-05",
+            "guidelines": "Loco pilot posts."
+        },
+        {
+            "exam_name": "RRB JE 2026",
+            "conducting_body": "Railway Recruitment Board",
+            "portal_url": "https://rrbcdg.gov.in",
+            "age_min": 18,
+            "age_max": 33,
+            "qualification": "Diploma",
+            "fees": {"GEN": 500, "OBC": 500, "SC": 250, "ST": 250, "EWS": 500, "PH": 250, "EX": 0},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-09-10",
+            "guidelines": "Junior Engineer posts."
+        },
+        {
+            "exam_name": "IBPS PO 2026",
+            "conducting_body": "Institute of Banking Personnel Selection",
+            "portal_url": "https://ibps.in",
+            "age_min": 20,
+            "age_max": 30,
+            "qualification": "Graduate",
+            "fees": {"GEN": 850, "OBC": 850, "SC": 175, "ST": 175, "EWS": 850, "PH": 175},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-07-15",
+            "guidelines": "Photo: 20KB-50KB (JPG). Signature: 10KB-20KB (JPG)."
+        },
+        {
+            "exam_name": "IBPS Clerk 2026",
+            "conducting_body": "Institute of Banking Personnel Selection",
+            "portal_url": "https://ibps.in",
+            "age_min": 20,
+            "age_max": 28,
+            "qualification": "Graduate",
+            "fees": {"GEN": 850, "OBC": 850, "SC": 175, "ST": 175, "EWS": 850, "PH": 175},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-08-01",
+            "guidelines": "Clerical bank posts."
+        },
+        {
+            "exam_name": "IBPS SO 2026",
+            "conducting_body": "Institute of Banking Personnel Selection",
+            "portal_url": "https://ibps.in",
+            "age_min": 20,
+            "age_max": 30,
+            "qualification": "Graduate",
+            "fees": {"GEN": 850, "OBC": 850, "SC": 175, "ST": 175, "EWS": 850, "PH": 175},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-10-01",
+            "guidelines": "Specialist Officer details."
+        },
+        {
+            "exam_name": "IBPS RRB PO 2026",
+            "conducting_body": "Institute of Banking Personnel Selection",
+            "portal_url": "https://ibps.in",
+            "age_min": 18,
+            "age_max": 40,
+            "qualification": "Graduate",
+            "fees": {"GEN": 850, "OBC": 850, "SC": 175, "ST": 175, "EWS": 850, "PH": 175},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-07-20",
+            "guidelines": "Regional rural bank officer posts."
+        },
+        {
+            "exam_name": "IBPS RRB Clerk 2026",
+            "conducting_body": "Institute of Banking Personnel Selection",
+            "portal_url": "https://ibps.in",
+            "age_min": 18,
+            "age_max": 28,
+            "qualification": "Graduate",
+            "fees": {"GEN": 850, "OBC": 850, "SC": 175, "ST": 175, "EWS": 850, "PH": 175},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-07-20",
+            "guidelines": "Regional rural bank assistant posts."
+        },
+        {
+            "exam_name": "SBI PO 2026",
+            "conducting_body": "State Bank of India",
+            "portal_url": "https://sbi.co.in/careers",
+            "age_min": 21,
+            "age_max": 30,
+            "qualification": "Graduate",
+            "fees": {"GEN": 750, "OBC": 750, "SC": 0, "ST": 0, "EWS": 750, "PH": 0},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-08-05",
+            "guidelines": "SBI officer recruitment."
+        },
+        {
+            "exam_name": "SBI Clerk 2026",
+            "conducting_body": "State Bank of India",
+            "portal_url": "https://sbi.co.in/careers",
+            "age_min": 20,
+            "age_max": 28,
+            "qualification": "Graduate",
+            "fees": {"GEN": 750, "OBC": 750, "SC": 0, "ST": 0, "EWS": 750, "PH": 0},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-07-18",
+            "guidelines": "Photo: 20KB-50KB (JPG). Signature: 10KB-20KB (JPG)."
+        },
+        {
+            "exam_name": "SBI SO 2026",
+            "conducting_body": "State Bank of India",
+            "portal_url": "https://sbi.co.in/careers",
+            "age_min": 21,
+            "age_max": 35,
+            "qualification": "Graduate",
+            "fees": {"GEN": 750, "OBC": 750, "SC": 0, "ST": 0, "EWS": 750, "PH": 0},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-09-01",
+            "guidelines": "SBI specialist officer posts."
+        },
+        {
+            "exam_name": "CRPF Constable 2026",
+            "conducting_body": "Central Reserve Police Force",
+            "portal_url": "https://crpf.gov.in",
+            "age_min": 18,
+            "age_max": 25,
+            "qualification": "10th Pass",
+            "fees": {"GEN": 100, "OBC": 100, "SC": 0, "ST": 0, "EWS": 100, "PH": 0},
+            "relaxations": {"SC": 5, "ST": 5},
+            "last_date": "2026-07-30",
+            "guidelines": "Photo: 50KB max. Signature: 20KB max."
+        },
+        {
+            "exam_name": "BSF Constable 2026",
+            "conducting_body": "Border Security Force",
+            "portal_url": "https://rectt.bsf.gov.in",
+            "age_min": 18,
+            "age_max": 23,
+            "qualification": "10th",
+            "fees": {"GEN": 100, "OBC": 100, "SC": 0, "ST": 0, "EWS": 100, "PH": 0},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-08-15",
+            "guidelines": "BSF constable parameters."
+        },
+        {
+            "exam_name": "CISF Constable 2026",
+            "conducting_body": "Central Industrial Security Force",
+            "portal_url": "https://cisfrectt.cisf.gov.in",
+            "age_min": 18,
+            "age_max": 23,
+            "qualification": "10th",
+            "fees": {"GEN": 100, "OBC": 100, "SC": 0, "ST": 0, "EWS": 100, "PH": 0},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-08-20",
+            "guidelines": "CISF constable guidelines."
+        },
+        {
+            "exam_name": "ITBP Constable 2026",
+            "conducting_body": "Indo-Tibetan Border Police",
+            "portal_url": "https://recruitment.itbpolice.nic.in",
+            "age_min": 18,
+            "age_max": 25,
+            "qualification": "10th",
+            "fees": {"GEN": 100, "OBC": 100, "SC": 0, "ST": 0, "EWS": 100, "PH": 0},
+            "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+            "last_date": "2026-09-01",
+            "guidelines": "ITBP recruitment parameters."
+        },
+        {
+            "exam_name": "Indian Army Agniveer 2026",
+            "conducting_body": "Indian Army",
+            "portal_url": "https://joinindianarmy.nic.in",
+            "age_min": 17,
+            "age_max": 23,
+            "qualification": "10th",
+            "fees": {"GEN": 0, "OBC": 0, "SC": 0, "ST": 0, "EWS": 0, "PH": 0},
+            "relaxations": {},
+            "last_date": "2026-08-01",
+            "guidelines": "Agniveer details."
+        },
+        {
+            "exam_name": "Indian Navy Agniveer 2026",
+            "conducting_body": "Indian Navy",
+            "portal_url": "https://joinindiannavy.gov.in",
+            "age_min": 17,
+            "age_max": 21,
+            "qualification": "10th",
+            "fees": {"GEN": 0, "OBC": 0, "SC": 0, "ST": 0, "EWS": 0, "PH": 0},
+            "relaxations": {},
+            "last_date": "2026-07-25",
+            "guidelines": "Navy Agniveer recruitment."
+        },
+        {
+            "exam_name": "HAL Apprentice 2026",
+            "conducting_body": "Hindustan Aeronautics Limited",
+            "portal_url": "https://hal-india.co.in",
+            "age_min": 18,
+            "age_max": 27,
+            "qualification": "Diploma",
+            "fees": {"GEN": 0, "OBC": 0, "SC": 0, "ST": 0, "EWS": 0, "PH": 0, "EX": 0},
+            "relaxations": {},
+            "last_date": "2026-08-05",
+            "guidelines": "Free application Trade Apprentice guidelines."
+        },
+        {
+            "exam_name": "BHEL Apprentice 2026",
+            "conducting_body": "Bharat Heavy Electricals Limited",
+            "portal_url": "https://bhel.com",
+            "age_min": 18,
+            "age_max": 27,
+            "qualification": "Diploma",
+            "fees": {"GEN": 0, "OBC": 0, "SC": 0, "ST": 0, "EWS": 0, "PH": 0, "EX": 0},
+            "relaxations": {},
+            "last_date": "2026-08-10",
+            "guidelines": "BHEL trade apprentice guidelines."
+        },
+        {
+            "exam_name": "ONGC Apprentice 2026",
+            "conducting_body": "Oil and Natural Gas Corporation",
+            "portal_url": "https://ongcindia.com",
+            "age_min": 18,
+            "age_max": 24,
+            "qualification": "Diploma",
+            "fees": {"GEN": 0, "OBC": 0, "SC": 0, "ST": 0, "EWS": 0, "PH": 0, "EX": 0},
+            "relaxations": {},
+            "last_date": "2026-08-20",
+            "guidelines": "ONGC apprentice guidelines."
+        },
+        {
+            "exam_name": "BSNL Apprentice 2026",
+            "conducting_body": "Bharat Sanchar Nigam Limited",
+            "portal_url": "https://bsnl.co.in",
+            "age_min": 18,
+            "age_max": 25,
+            "qualification": "Diploma",
+            "fees": {"GEN": 0, "OBC": 0, "SC": 0, "ST": 0, "EWS": 0, "PH": 0, "EX": 0},
+            "relaxations": {},
+            "last_date": "2026-08-15",
+            "guidelines": "BSNL apprentice guidelines."
+        },
+        {
+            "exam_name": "CTET 2026",
+            "conducting_body": "Central Board of Secondary Education",
+            "portal_url": "https://ctet.nic.in",
+            "age_min": 18,
+            "age_max": 35,
+            "qualification": "Graduate",
+            "fees": {"GEN": 1000, "OBC": 1000, "SC": 500, "ST": 500, "EWS": 1000, "PH": 500},
+            "relaxations": {},
+            "last_date": "2026-07-20",
+            "guidelines": "Teacher eligibility test requirements."
+        },
+        {
+            "exam_name": "NVS Teacher 2026",
+            "conducting_body": "Navodaya Vidyalaya Samiti",
+            "portal_url": "https://navodaya.gov.in",
+            "age_min": 21,
+            "age_max": 35,
+            "qualification": "Graduate",
+            "fees": {"GEN": 1200, "OBC": 600, "SC": 0, "ST": 0, "EWS": 1200, "PH": 0},
+            "relaxations": {},
+            "last_date": "2026-08-01",
+            "guidelines": "NVS teacher details."
+        },
+        {
+            "exam_name": "NTA JEE Main 2026",
+            "conducting_body": "National Testing Agency",
             "portal_url": "https://jeemain.nta.ac.in",
-            "guidelines": "Passport photo: 10KB-200KB (JPG, white background, 80% face coverage). Postcard photo: 10KB-200KB. Signature: 4KB-30KB. Category certificate: 50KB-300KB (PDF)."
+            "age_min": 17,
+            "age_max": 25,
+            "qualification": "12th",
+            "fees": {"GEN": 1000, "OBC": 1000, "SC": 500, "ST": 500, "EWS": 1000, "PH": 500},
+            "relaxations": {},
+            "last_date": "2026-07-20",
+            "guidelines": "JEE Main details."
+        },
+        {
+            "exam_name": "NTA NEET UG 2026",
+            "conducting_body": "National Testing Agency",
+            "portal_url": "https://neet.nta.nic.in",
+            "age_min": 17,
+            "age_max": 25,
+            "qualification": "12th",
+            "fees": {"GEN": 1700, "OBC": 1700, "SC": 1000, "ST": 1000, "EWS": 1700, "PH": 1000},
+            "relaxations": {},
+            "last_date": "2026-07-15",
+            "guidelines": "NEET details."
+        },
+        {
+            "exam_name": "NTA CUET 2026",
+            "conducting_body": "National Testing Agency",
+            "portal_url": "https://cuet.samarth.ac.in",
+            "age_min": 17,
+            "age_max": 35,
+            "qualification": "12th",
+            "fees": {"GEN": 650, "OBC": 600, "SC": 550, "ST": 550, "EWS": 650, "PH": 550},
+            "relaxations": {},
+            "last_date": "2026-07-10",
+            "guidelines": "CUET details."
         }
     ],
     "State_wise": {
-        "Andhra Pradesh": [
-            {
-                "exam_name": "APPSC Group 1 & 2 Services",
-                "conducting_body": "Andhra Pradesh Public Service Commission (APPSC)",
-                "portal_url": "https://psc.ap.gov.in",
-                "guidelines": "One-Time Profile Registration (OTPR) required. Photo: 50KB max (JPG). Signature: 30KB max (JPG, black ink)."
-            }
-        ],
-        "Arunachal Pradesh": [
-            {
-                "exam_name": "APPSC Combined Competitive Exam",
-                "conducting_body": "Arunachal Pradesh Public Service Commission (APPSC)",
-                "portal_url": "https://appsc.gov.in",
-                "guidelines": "Photo: 100KB max (JPG). Signature: 50KB max (JPG). Permanent Resident Certificate (PRC) required for local state quota."
-            }
-        ],
-        "Assam": [
-            {
-                "exam_name": "APSC Combined Competitive Exam",
-                "conducting_body": "Assam Public Service Commission (APSC)",
-                "portal_url": "https://apsc.nic.in",
-                "guidelines": "One-Time Registration required. Photo: 20KB-200KB (JPG). Signature: 10KB-200KB (JPG). Domicile certificate of Assam mandatory."
-            }
-        ],
         "Bihar": [
             {
-                "exam_name": "BPSC Civil Services Examination",
+                "exam_name": "BPSC 70th CCE 2026",
                 "conducting_body": "Bihar Public Service Commission (BPSC)",
                 "portal_url": "https://bpsc.bih.nic.in",
-                "guidelines": "Aadhaar Card mandatory. Live web-cam photo capture required during submission. Hindi & English signatures must be uploaded separately (15KB-25KB, JPG)."
-            },
-            {
-                "exam_name": "Bihar SSC Inter Level",
-                "conducting_body": "Bihar Staff Selection Commission (BSSC)",
-                "portal_url": "https://bssc.bihar.gov.in",
-                "guidelines": "Aadhaar authentication. Photo: 20KB-50KB (JPG). Signature: 10KB-20KB (JPG). Domicile and non-creamy layer certificate mandatory for state reservation."
-            }
-        ],
-        "Chhattisgarh": [
-            {
-                "exam_name": "CGPSC State Service Exam",
-                "conducting_body": "Chhattisgarh Public Service Commission (CGPSC)",
-                "portal_url": "https://psc.cg.gov.in",
-                "guidelines": "Photo: 20KB-100KB (JPG). Signature: 10KB-50KB (JPG). Domicile certificates required for local CG reservation benefits."
-            }
-        ],
-        "Goa": [
-            {
-                "exam_name": "Goa PSC Officers Recruitments",
-                "conducting_body": "Goa Public Service Commission (GPSC)",
-                "portal_url": "https://gpsc.goa.gov.in",
-                "guidelines": "Photo: 50KB max (JPG). Signature: 20KB max (JPG). Knowledge of Konkani language is an essential criteria for general recruitments."
-            }
-        ],
-        "Gujarat": [
-            {
-                "exam_name": "GPSC Class 1 & 2 Officers recruitment",
-                "conducting_body": "Gujarat Public Service Commission (GPSC)",
-                "portal_url": "https://gpsc.gujarat.gov.in",
-                "guidelines": "One-Time Registration (OTR) on OJAS portal. Photo: 15KB max (JPG). Signature: 15KB max (JPG). Domicile certificate of Gujarat required for reservation."
-            }
-        ],
-        "Haryana": [
-            {
-                "exam_name": "HPSC Civil Services (HCS)",
-                "conducting_body": "Haryana Public Service Commission (HPSC)",
-                "portal_url": "https://hpsc.gov.in",
-                "guidelines": "Aadhaar verification via Parivar Pehchan Patra (PPP) Family ID is highly recommended. Photo: 20KB-50KB (JPG). Signature: 10KB-20KB (JPG)."
-            }
-        ],
-        "Himachal Pradesh": [
-            {
-                "exam_name": "HPPSC Administrative Services (HPAS)",
-                "conducting_body": "Himachal Pradesh Public Service Commission (HPPSC)",
-                "portal_url": "https://hppsc.hp.gov.in",
-                "guidelines": "One-Time Registration required. Photo: 40KB max (JPG). Signature: 40KB max (JPG). Bonafide Himachali certificate mandatory for reservation."
-            }
-        ],
-        "Jharkhand": [
-            {
-                "exam_name": "JPSC Civil Services Exam",
-                "conducting_body": "Jharkhand Public Service Commission (JPSC)",
-                "portal_url": "https://jpsc.gov.in",
-                "guidelines": "Photo: 20KB-50KB (JPG). Signature: 10KB-20KB (JPG). Domicile and Caste certificate mandatory for local ST/SC/OBC benefits."
-            }
-        ],
-        "Karnataka": [
-            {
-                "exam_name": "KPSC Gazetted Probationers recruitment",
-                "conducting_body": "Karnataka Public Service Commission (KPSC)",
-                "portal_url": "https://kpsc.kar.nic.in",
-                "guidelines": "Photo: 20KB-50KB (JPG). Signature: 10KB-20KB (JPG). Kannada medium and Rural reservation candidate quotas require valid certificates."
-            }
-        ],
-        "Kerala": [
-            {
-                "exam_name": "Kerala PSC Gazetted Officers Exam",
-                "conducting_body": "Kerala Public Service Commission (Kerala PSC)",
-                "portal_url": "https://keralapsc.gov.in",
-                "guidelines": "One-Time Registration (Thulasi) required. Upload photo with Candidate Name and date of photo printed at the bottom: 30KB max (JPG). Signature: 30KB max (JPG)."
-            }
-        ],
-        "Madhya Pradesh": [
-            {
-                "exam_name": "MPPSC State Service Exam",
-                "conducting_body": "Madhya Pradesh Public Service Commission (MPPSC)",
-                "portal_url": "https://mppsc.mp.gov.in",
-                "guidelines": "MP Employment Registration (Rojgar Panjiyan) mandatory. Photo: 20KB-100KB (JPG). Signature: 10KB-50KB (JPG)."
-            }
-        ],
-        "Maharashtra": [
-            {
-                "exam_name": "MPSC State Services Examination",
-                "conducting_body": "Maharashtra Public Service Commission (MPSC)",
-                "portal_url": "https://mpsc.gov.in",
-                "guidelines": "Detailed Profile Creation mandatory. Photo: 20KB-50KB (JPG). Signature: 20KB-50KB (JPG). Non-Creamy Layer (NCL) certificate upload in PDF for OBC quota."
-            }
-        ],
-        "Manipur": [
-            {
-                "exam_name": "MPSC Civil Services Exam",
-                "conducting_body": "Manipur Public Service Commission (MPSC)",
-                "portal_url": "https://mpscmanipur.gov.in",
-                "guidelines": "Photo: 50KB max (JPG). Signature: 20KB max (JPG). Inner Line Permit or Manipur domicile verification mandatory."
-            }
-        ],
-        "Meghalaya": [
-            {
-                "exam_name": "MPSC Officers Recruitments",
-                "conducting_body": "Meghalaya Public Service Commission (MPSC)",
-                "portal_url": "https://mpsc.nic.in",
-                "guidelines": "Photo: 80KB max (JPG). Signature: 40KB max (JPG). Khasi/Jaintia/Garo reservation quotas apply for local residents."
-            }
-        ],
-        "Mizoram": [
-            {
-                "exam_name": "MPSC Civil Services Exam",
-                "conducting_body": "Mizoram Public Service Commission (MPSC)",
-                "portal_url": "https://mpsc.mizoram.gov.in",
-                "guidelines": "Photo: 100KB max (JPG). Signature: 50KB max (JPG). Knowledge of Mizo language up to Middle School standard is mandatory."
-            }
-        ],
-        "Nagaland": [
-            {
-                "exam_name": "NPSC Civil Services Exam",
-                "conducting_body": "Nagaland Public Service Commission (NPSC)",
-                "portal_url": "https://npsc.co.in",
-                "guidelines": "Indigenous Inhabitant Certificate of Nagaland required for reservation. Photo: 50KB max (JPG). Signature: 20KB max (JPG)."
-            }
-        ],
-        "Odisha": [
-            {
-                "exam_name": "OPSC Civil Services Examination",
-                "conducting_body": "Odisha Public Service Commission (OPSC)",
-                "portal_url": "https://opsc.gov.in",
-                "guidelines": "Photo: 20KB-100KB (JPG). Signature: 10KB-56KB (JPG, black ink). Left thumb impression: 10KB-56KB (JPG)."
-            }
-        ],
-        "Punjab": [
-            {
-                "exam_name": "PPSC Civil Services Exam",
-                "conducting_body": "Punjab Public Service Commission (PPSC)",
-                "portal_url": "https://ppsc.gov.in",
-                "guidelines": "Photo: 10KB-40KB (JPG). Signature: 10KB-40KB (JPG). Matriculation certificate with Punjabi language pass is mandatory."
-            }
-        ],
-        "Rajasthan": [
-            {
-                "exam_name": "RPSC RAS Civil Services",
-                "conducting_body": "Rajasthan Public Service Commission (RPSC)",
-                "portal_url": "https://rpsc.rajasthan.gov.in",
-                "guidelines": "Single Sign-On (SSO ID) registration required. Photo: 50KB-100KB (JPG). Signature: 20KB-50KB (JPG, black ink). Aadhaar verification mandatory."
-            }
-        ],
-        "Sikkim": [
-            {
-                "exam_name": "SPSC Officers Recruitments",
-                "conducting_body": "Sikkim Public Service Commission (SPSC)",
-                "portal_url": "https://spsc.sikkim.gov.in",
-                "guidelines": "Certificate of Identification (COI) or Sikkim Subject Certificate is mandatory for local state posts. Photo: 50KB max. Signature: 30KB max."
-            }
-        ],
-        "Tamil Nadu": [
-            {
-                "exam_name": "TNPSC Group 1, 2 & 4 Services",
-                "conducting_body": "Tamil Nadu Public Service Commission (TNPSC)",
-                "portal_url": "https://tnpsc.gov.in",
-                "guidelines": "One-Time Registration (OTR) with Aadhaar mandatory. Photo: 20KB-50KB (JPG, name and date printed). Signature: 10KB-20KB (JPG, blue/black ink)."
-            }
-        ],
-        "Telangana": [
-            {
-                "exam_name": "TSPSC Group 1 & 2 Recruitments",
-                "conducting_body": "Telangana State Public Service Commission (TSPSC)",
-                "portal_url": "https://tspsc.gov.in",
-                "guidelines": "One-Time Registration (OTR) with Aadhaar linking. Photo: 50KB max (JPG). Signature: 30KB max (JPG). Local candidate certificate required."
-            }
-        ],
-        "Tripura": [
-            {
-                "exam_name": "TPSC Administrative Services Exam",
-                "conducting_body": "Tripura Public Service Commission (TPSC)",
-                "portal_url": "https://tpsc.tripura.gov.in",
-                "guidelines": "Tripura PRTC (Permanent Resident Certificate) required. Photo: 40KB max (JPG). Signature: 20KB max (JPG)."
+                "age_min": 20,
+                "age_max": 37,
+                "qualification": "Graduate",
+                "fees": {"GEN": 600, "OBC": 150, "SC": 150, "ST": 150, "EWS": 600, "PH": 150, "EX": 0},
+                "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+                "last_date": "2026-08-15",
+                "guidelines": "Aadhaar Card mandatory. Live web-cam photo capture required during submission."
             }
         ],
         "Uttar Pradesh": [
             {
-                "exam_name": "UPPSC Combined State Services (PCS)",
-                "conducting_body": "Uttar Pradesh Public Service Commission (UPPSC)",
+                "exam_name": "UPPSC PCS 2026",
+                "conducting_body": "Uttar Pradesh Public Service Commission",
                 "portal_url": "https://uppsc.up.nic.in",
-                "guidelines": "One-Time Registration (OTR) mandatory on the UPPSC portal. Photo and signature combined in a single file: 50KB max (JPG, signature below photo)."
-            },
+                "age_min": 21,
+                "age_max": 40,
+                "qualification": "Graduate",
+                "fees": {"GEN": 125, "OBC": 65, "SC": 65, "ST": 65, "EWS": 125, "PH": 0},
+                "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+                "last_date": "2026-08-20",
+                "guidelines": "UPPSC details."
+            }
+        ],
+        "Maharashtra": [
             {
-                "exam_name": "UPSSSC PET Exam",
-                "conducting_body": "Uttar Pradesh Subordinate Services Selection Commission (UPSSSC)",
-                "portal_url": "https://upsssc.gov.in",
-                "guidelines": "Preliminary Eligibility Test (PET) score mandatory for Group C posts. Photo: 50KB max. Signature: 30KB max."
+                "exam_name": "MPSC State Service 2026",
+                "conducting_body": "Maharashtra Public Service Commission",
+                "portal_url": "https://mpsc.gov.in",
+                "age_min": 19,
+                "age_max": 38,
+                "qualification": "Graduate",
+                "fees": {"GEN": 524, "OBC": 324, "SC": 324, "ST": 324, "EWS": 524, "PH": 0},
+                "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+                "last_date": "2026-08-01",
+                "guidelines": "MPSC details."
+            }
+        ],
+        "Rajasthan": [
+            {
+                "exam_name": "RPSC RAS 2026",
+                "conducting_body": "Rajasthan Public Service Commission",
+                "portal_url": "https://rpsc.rajasthan.gov.in",
+                "age_min": 21,
+                "age_max": 40,
+                "qualification": "Graduate",
+                "fees": {"GEN": 350, "OBC": 250, "SC": 150, "ST": 150, "EWS": 350, "PH": 0},
+                "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+                "last_date": "2026-09-01",
+                "guidelines": "RPSC details."
+            }
+        ],
+        "Delhi": [
+            {
+                "exam_name": "DSSSB 2026",
+                "conducting_body": "Delhi Subordinate Services Selection Board",
+                "portal_url": "https://dsssbonline.nic.in",
+                "age_min": 18,
+                "age_max": 32,
+                "qualification": "Graduate",
+                "fees": {"GEN": 500, "OBC": 500, "SC": 0, "ST": 0, "EWS": 500, "PH": 0},
+                "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+                "last_date": "2026-08-05",
+                "guidelines": "DSSSB details."
             }
         ],
         "Uttarakhand": [
             {
-                "exam_name": "UKPSC Combined State Services",
-                "conducting_body": "Uttarakhand Public Service Commission (UKPSC)",
-                "portal_url": "https://ukpsc.net.in",
-                "guidelines": "One-Time Registration required. Photo: 20KB-50KB (JPG). Signature: 10KB-20KB (JPG). Uttarakhand domicile certificate for state reservation benefits."
-            }
-        ],
-        "West Bengal": [
-            {
-                "exam_name": "WBPSC Civil Services (WBCS)",
-                "conducting_body": "West Bengal Public Service Commission (WBPSC)",
-                "portal_url": "https://psc.wb.gov.in",
-                "guidelines": "One-Time Registration required. Photo: 20KB-100KB (JPG). Signature: 10KB-50KB (JPG). Ability to read, write and speak Bengali (except candidates from Darjeeling/Kalimpong hills)."
+                "exam_name": "UKPSC 2026",
+                "conducting_body": "Uttarakhand Public Service Commission",
+                "portal_url": "https://ukpsc.gov.in",
+                "age_min": 21,
+                "age_max": 42,
+                "qualification": "Graduate",
+                "fees": {"GEN": 172, "OBC": 82, "SC": 45, "ST": 45, "EWS": 172, "PH": 0},
+                "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+                "last_date": "2026-08-10",
+                "guidelines": "UKPSC details."
             }
         ]
     },
-    "Union_Territories": [
-        {
-            "exam_name": "DSSSB Teacher / Officer Recruitment",
-            "conducting_body": "Delhi Subordinate Services Selection Board (DSSSB)",
-            "portal_url": "https://dsssbonline.nic.in",
-            "guidelines": "Postcard size photo: 50KB-300KB (JPG, 5x7 inches). Passport size photo: 40KB max. Signature: 20KB max. Aadhaar registration mandatory."
-        },
-        {
-            "exam_name": "JKPSC Combined Competitive Exam (KAS)",
-            "conducting_body": "Jammu & Kashmir Public Service Commission (JKPSC)",
-            "portal_url": "https://jkpsc.nic.in",
-            "guidelines": "Domicile Certificate of J&K UT is mandatory. Photo: 10KB-20KB (JPG). Signature: 10KB-20KB (JPG). Left thumb impression: 10KB-20KB."
-        }
-    ]
+    "Union_Territories": []
 }
 
 def seed_exam_database(rag_engine_instance):

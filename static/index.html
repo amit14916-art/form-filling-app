@@ -3,380 +3,471 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SarkariSwarm - Auto-Fill Sarkari Exam Forms & Live Job Alerts</title>
-    <meta name="description" content="SarkariSwarm is India's leading AI-powered form filling assistant. Get live job notifications from FreeJobAlert, UPSC, SSC, Bank PO, and autofill forms securely using Zero-Knowledge encryption.">
-    <meta name="keywords" content="Sarkari Result, Sarkari Job, Free Job Alert, Govt Job Notification, Form Auto-filler, Swarm Agents, UPSC, SSC CGL, Bihar SSC, UPPSC, BPSC, SarkariSwarm">
-    <meta name="author" content="SarkariSwarm Team">
-    <meta property="og:title" content="SarkariSwarm - AI-Powered Form Filling Assistant">
-    <meta property="og:description" content="Get live job notifications and autofill forms securely using local zero-knowledge cryptography.">
-    <meta property="og:type" content="website">
-    <!-- CSS stylesheet link -->
-    <link rel="stylesheet" href="styles.css">
-    <!-- FontAwesome for icons -->
+    <title>SarkariSwarm - Auto Form Filling Portal</title>
+    <meta name="description" content="AI-Powered automated form filling gateway for Indian Government exams. Re-engineered secure credential vault.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-    <!-- Main Wrapper mirroring FreeJobAlert Structure -->
-    <div class="fja-wrapper">
-        
-        <!-- TOP BRANDING HEADER -->
-        <header class="fja-header">
-            <div class="fja-header-top">
-                <div class="fja-logo" onclick="location.reload()">
-                    <div class="logo-icon-svg" style="background: linear-gradient(135deg, #1e5aab, #06b6d4); color: white; width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 1.25rem; font-weight: 800; box-shadow: 0 0 15px rgba(30, 90, 171, 0.4);">
-                        SS
-                    </div>
-                    <div class="logo-txt-group">
-                        <span class="logo-main-text">SarkariSwarm</span>
-                        <span class="logo-sub-text">AI Form Filler & Live Sarkari Results</span>
-                    </div>
-                </div>
-                
-                <div class="fja-header-buttons">
-                    <a href="https://wa.me/#" target="_blank" class="fja-btn fja-btn-whatsapp">
-                        <i class="fa-brands fa-whatsapp"></i> Join Whatsapp
-                    </a>
-                    <button class="fja-btn fja-btn-support">
-                        <i class="fa-solid fa-hands-praying"></i> Support SarkariSwarm!
-                    </button>
-                    <button class="fja-btn fja-btn-sarkari">
-                        <i class="fa-solid fa-graduation-cap"></i> Sarkari Result
-                    </button>
-                </div>
+    <!-- AUTHENTICATION PANEL -->
+    <div id="auth-screen" class="auth-container">
+        <div class="auth-card">
+            <div class="auth-brand">
+                <div class="brand-logo"><i class="fa-solid fa-bolt"></i></div>
+                <h1>SarkariSwarm</h1>
+                <p>Automated Exam Application Engine</p>
             </div>
-
-            <!-- Enhanced Search Box -->
-            <div class="fja-search-bar">
-                <div class="search-inner">
-                    <span class="search-label">ENHANCED BY</span>
-                    <img src="https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_74x24dp.png" alt="Google" style="height: 18px; margin-right: 8px;">
-                    <input type="text" id="global-search" placeholder="Search latest notifications, admit cards, exam results..." oninput="handleSearch(this.value)">
-                    <i class="fa-solid fa-magnifying-glass search-btn-icon"></i>
-                </div>
-            </div>
-        </header>
-
-        <!-- MAIN CONTAINER -->
-        <div class="fja-body-grid">
             
-            <!-- LEFT COLUMN: SIDEBAR MENU -->
-            <nav class="fja-sidebar">
-                <div class="sidebar-header">Notifications</div>
-                <ul class="sidebar-links">
-                    <li onclick="filterCategory('all')"><i class="fa-solid fa-chevron-right"></i> Latest Notifications</li>
-                    <li onclick="filterCategory('Central Jobs')"><i class="fa-solid fa-chevron-right"></i> Central Jobs</li>
-                    <li onclick="filterCategory('State Jobs')"><i class="fa-solid fa-chevron-right"></i> State Jobs</li>
-                    <li onclick="filterCategory('Bank Jobs')"><i class="fa-solid fa-chevron-right"></i> Bank Jobs</li>
-                    <li onclick="filterCategory('Railway Jobs')"><i class="fa-solid fa-chevron-right"></i> Railway Jobs</li>
-                    <li><i class="fa-solid fa-chevron-right"></i> Anganwadi Recruitment</li>
-                    <li><i class="fa-solid fa-chevron-right"></i> Forest Jobs</li>
-                    <li><i class="fa-solid fa-chevron-right"></i> Govt Jobs without Exams</li>
-                    <li><i class="fa-solid fa-chevron-right"></i> Female Govt Jobs</li>
-                    <li><i class="fa-solid fa-chevron-right"></i> EDUCATION</li>
-                    <li><i class="fa-solid fa-chevron-right"></i> Free Mock Test</li>
-                    
-                    <!-- Highlighted Active Announcements Block -->
-                    <li class="active-announcements"><i class="fa-solid fa-chevron-right"></i> Latest Announcements</li>
-                    
-                    <li><i class="fa-solid fa-chevron-right"></i> Sarkari Result</li>
-                    <li><i class="fa-solid fa-chevron-right"></i> Admit Card</li>
-                    <li><i class="fa-solid fa-chevron-right"></i> Exam Results</li>
-                </ul>
-            </nav>
+            <div class="auth-tabs">
+                <button id="tab-login-btn" class="auth-tab-btn active" onclick="switchAuthTab('login')">Login</button>
+                <button id="tab-register-btn" class="auth-tab-btn" onclick="switchAuthTab('register')">Register</button>
+            </div>
 
-            <!-- RIGHT COLUMN: MAIN WORKSPACE CONTENT -->
-            <main class="fja-content">
-                
-                <!-- CLOSING SOON GRID SECTION -->
-                <section class="closing-soon-section">
-                    <div class="section-title-bar">Closing Soon</div>
-                    <div class="closing-soon-grid" id="closing-soon-container">
-                        <!-- Card 1: Red -->
-                        <div class="closing-card card-red">
-                            <div class="card-badge">6 DAYS LEFT</div>
-                            <div class="card-desc" onclick="triggerAutoFill('SSC CGL Group B & Group C Online Form 2026', 'https://ssc.gov.in')">SSC CGL 12256 Group B & Group C Online Form 2026</div>
-                            <button class="auto-apply-pill" onclick="triggerAutoApply('SSC CGL Group B & Group C Online Form 2026', 'https://ssc.gov.in')">
-                                <i class="fa-solid fa-bolt"></i> Auto Apply
-                            </button>
-                        </div>
-                        <!-- Card 2: Orange -->
-                        <div class="closing-card card-orange">
-                            <div class="card-badge">6 DAYS LEFT</div>
-                            <div class="card-desc" onclick="triggerAutoFill('Central Bank of India Apprentice Recruitment 2026', 'https://www.centralbankofindia.co.in')">Central Bank of India 4,500 Apprentice Recruitment 2026</div>
-                            <button class="auto-apply-pill" onclick="triggerAutoApply('Central Bank of India Apprentice Recruitment 2026', 'https://www.centralbankofindia.co.in')">
-                                <i class="fa-solid fa-bolt"></i> Auto Apply
-                            </button>
-                        </div>
-                        <!-- Card 3: Green -->
-                        <div class="closing-card card-green">
-                            <div class="card-badge">7 DAYS LEFT</div>
-                            <div class="card-desc" onclick="triggerAutoFill('RSSB Computer Instructor Online Form 2026', 'https://rsmssb.rajasthan.gov.in')">RSSB 3951 Senior and Basic Computer Instructor Online Form 2026</div>
-                            <button class="auto-apply-pill" onclick="triggerAutoApply('RSSB Computer Instructor Online Form 2026', 'https://rsmssb.rajasthan.gov.in')">
-                                <i class="fa-solid fa-bolt"></i> Auto Apply
-                            </button>
-                        </div>
-                        <!-- Card 4: Blue -->
-                        <div class="closing-card card-blue">
-                            <div class="card-badge">2 DAYS LEFT</div>
-                            <div class="card-desc" onclick="triggerAutoFill('UPSSSC Lower PCS Online Form 2026', 'https://upsssc.gov.in')">UPSSSC 2516 Lower PCS Online Form 2026</div>
-                            <button class="auto-apply-pill" onclick="triggerAutoApply('UPSSSC Lower PCS Online Form 2026', 'https://upsssc.gov.in')">
-                                <i class="fa-solid fa-bolt"></i> Auto Apply
-                            </button>
-                        </div>
-                    </div>
-                </section>
+            <!-- Login Form -->
+            <form id="login-form" onsubmit="handleLoginSubmit(event)" class="auth-form active">
+                <div class="form-group">
+                    <label for="login-email"><i class="fa-regular fa-envelope"></i> Email Address</label>
+                    <input type="email" id="login-email" required placeholder="name@example.com">
+                </div>
+                <div class="form-group">
+                    <label for="login-password"><i class="fa-solid fa-lock"></i> Password</label>
+                    <input type="password" id="login-password" required placeholder="••••••••">
+                </div>
+                <button type="submit" id="btn-login-submit" class="btn btn-primary btn-block">
+                    <span>Sign In</span> <i class="fa-solid fa-right-to-bracket"></i>
+                </button>
+            </form>
 
-                <!-- TODAY LIVE UPDATES SECTION -->
-                <section class="live-updates-section">
-                    <div class="live-header">
-                        <span class="live-dot"></span> Today LIVE Updates
-                    </div>
-                    <div class="live-list" id="live-updates-container">
-                        <!-- Loaded dynamically via JavaScript scraper -->
-                        <div class="fja-loading">
-                            <i class="fa-solid fa-spinner fa-spin"></i>
-                            <p>Loading latest government job updates live...</p>
-                        </div>
-                    </div>
-                </section>
-
-            </main>
+            <!-- Register Form -->
+            <form id="register-form" onsubmit="handleRegisterSubmit(event)" class="auth-form">
+                <div class="form-group">
+                    <label for="register-email"><i class="fa-regular fa-envelope"></i> Email Address</label>
+                    <input type="email" id="register-email" required placeholder="name@example.com">
+                </div>
+                <div class="form-group">
+                    <label for="register-phone"><i class="fa-solid fa-phone"></i> Mobile Phone</label>
+                    <input type="tel" id="register-phone" required placeholder="9876543210" pattern="[0-9]{10}">
+                </div>
+                <div class="form-group">
+                    <label for="register-password"><i class="fa-solid fa-lock"></i> Password (min. 6 chars)</label>
+                    <input type="password" id="register-password" required minlength="6" placeholder="Create secure password">
+                </div>
+                <button type="submit" id="btn-register-submit" class="btn btn-primary btn-block">
+                    <span>Register</span> <i class="fa-solid fa-user-plus"></i>
+                </button>
+            </form>
         </div>
     </div>
 
-    <!-- SWARM OPERATIONS CENTER DRAWERS (SLIDES IN FROM THE RIGHT) -->
-    <div class="swarm-drawer-overlay" id="swarm-drawer">
-        <div class="swarm-drawer">
-            <div class="drawer-header">
-                <div class="drawer-header-left">
-                    <i class="fa-solid fa-network-wired"></i>
-                    <h3>Swarm Operations Console</h3>
+    <!-- MAIN APP INTERFACE -->
+    <div id="app-screen" class="app-container" style="display: none;">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-logo"><i class="fa-solid fa-bolt"></i></div>
+                <div class="brand-info">
+                    <span class="brand-name">SarkariSwarm</span>
+                    <span class="brand-badge"><i class="fa-solid fa-shield-halved"></i> Secure Vault</span>
                 </div>
-                <button class="close-drawer-btn" onclick="closeDrawer()">&times;</button>
             </div>
-            
-            <!-- Drawer Tabs -->
-            <nav class="drawer-tabs">
-                <button class="drawer-tab-btn active" onclick="switchDrawerTab('tab-autofill')">
-                    <i class="fa-solid fa-keyboard"></i> Profile & Autofill
+
+            <nav class="sidebar-menu">
+                <button onclick="switchPanel('panel-dashboard')" id="nav-panel-dashboard" class="menu-item active">
+                    <i class="fa-solid fa-chart-line"></i> <span>Dashboard</span>
                 </button>
-                <button class="drawer-tab-btn" onclick="switchDrawerTab('tab-pipeline')" id="pipeline-tab-btn">
-                    <i class="fa-solid fa-desktop"></i> Live Monitor
+                <button onclick="switchPanel('panel-profile')" id="nav-panel-profile" class="menu-item">
+                    <i class="fa-solid fa-address-card"></i> <span>My Profile</span>
                 </button>
-                <button class="drawer-tab-btn" onclick="switchDrawerTab('tab-security')">
-                    <i class="fa-solid fa-vault"></i> ZK Cryptography
+                <button onclick="switchPanel('panel-documents')" id="nav-panel-documents" class="menu-item">
+                    <i class="fa-solid fa-folder-open"></i> <span>Documents</span>
+                </button>
+                <button onclick="switchPanel('panel-applied')" id="nav-panel-applied" class="menu-item">
+                    <i class="fa-solid fa-list-check"></i> <span>Applied Forms</span>
                 </button>
             </nav>
 
-            <!-- DRAWER TAB 1: Profile & Autofill Form -->
-            <div id="tab-autofill" class="drawer-tab-content active">
-                <form id="submission-form" onsubmit="deploySwarmTask(event)">
-                    <div class="drawer-form-group">
-                        <label for="chat-command">Job Instruction Command</label>
-                        <textarea id="chat-command" class="drawer-control" required></textarea>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="drawer-form-group">
-                            <label for="user-name">Full Name</label>
-                            <input type="text" id="user-name" class="drawer-control" placeholder="Bob Dylan" required>
-                        </div>
-                        <div class="drawer-form-group">
-                            <label for="user-id">User ID</label>
-                            <input type="number" id="user-id" class="drawer-control" value="42" required>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="drawer-form-group">
-                            <label for="dob">Date of Birth</label>
-                            <input type="date" id="dob" class="drawer-control" required>
-                        </div>
-                        <div class="drawer-form-group">
-                            <label for="gender">Gender</label>
-                            <select id="gender" class="drawer-control" required>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="drawer-form-group">
-                            <label for="category">Category</label>
-                            <select id="category" class="drawer-control" required>
-                                <option value="GEN">GEN</option>
-                                <option value="OBC">OBC</option>
-                                <option value="SC">SC</option>
-                                <option value="ST">ST</option>
-                            </select>
-                        </div>
-                        <div class="drawer-form-group">
-                            <label for="state">State</label>
-                            <input type="text" id="state" class="drawer-control" placeholder="Bihar" required>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="drawer-form-group">
-                            <label for="qualification">Qualification</label>
-                            <select id="qualification" class="drawer-control" required>
-                                <option value="Graduate">Graduate</option>
-                                <option value="Post Graduate">Post Graduate</option>
-                                <option value="12th">12th</option>
-                                <option value="10th">10th</option>
-                            </select>
-                        </div>
-                        <div class="drawer-form-group">
-                            <label for="phone-number">Mobile Number</label>
-                            <input type="tel" id="phone-number" class="drawer-control" placeholder="9876543210" required>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="drawer-form-group">
-                            <label for="aadhaar-number">Aadhaar Card Number</label>
-                            <input type="text" id="aadhaar-number" class="drawer-control" placeholder="111122223333" required>
-                        </div>
-                        <div class="drawer-form-group">
-                            <label for="email-address">Email Address</label>
-                            <input type="email" id="email-address" class="drawer-control" placeholder="user@gmail.com" required>
-                        </div>
-                    </div>
-
-                    <div class="drawer-form-group">
-                        <label for="exam-center">Preferred Exam Center</label>
-                        <input type="text" id="exam-center" class="drawer-control" placeholder="e.g. Center A">
-                    </div>
-
-                    <div class="drawer-form-group">
-                        <label for="passphrase">Local Decryption Passphrase</label>
-                        <input type="password" id="passphrase" class="drawer-control" placeholder="passphrase for Zero-Knowledge lock" required>
-                    </div>
-
-                    <button type="submit" class="deploy-swarm-btn">
-                        <i class="fa-solid fa-rocket"></i> Deploy Agent Swarm
-                    </button>
-                </form>
-            </div>
-
-            <!-- DRAWER TAB 2: Live Monitor Pipeline -->
-            <div id="tab-pipeline" class="drawer-tab-content">
-                <div class="monitor-container">
-                    
-                    <!-- Steps & Consensus -->
-                    <div class="monitor-row">
-                        <div class="status-gauge-box">
-                            <h5>Agent Swarm Pipeline</h5>
-                            <div class="steps-progress" id="steps-container">
-                                <!-- Step status elements -->
-                            </div>
-                        </div>
-
-                        <div class="status-gauge-box">
-                            <h5>QA Consensus</h5>
-                            <div class="consensus-circle">
-                                <span id="consensus-percent">0%</span>
-                            </div>
-                            <div class="fja-progress-bar">
-                                <div class="fja-progress-fill" id="consensus-fill"></div>
-                            </div>
-                            <div class="consensus-verdict" id="consensus-verdict">Awaiting reviews...</div>
-                        </div>
-                    </div>
-
-                    <!-- Browser Screen Simulation -->
-                    <div class="drawer-section">
-                        <h5>Playwright Live Sandbox Track</h5>
-                        <div class="browser-wrapper">
-                            <div class="browser-topbar">
-                                <div class="dots-left">
-                                    <span class="dot-c red-c"></span>
-                                    <span class="dot-c yellow-c"></span>
-                                    <span class="dot-c green-c"></span>
-                                </div>
-                                <div class="url-input" id="browser-url">about:blank</div>
-                            </div>
-                            <div class="browser-body" id="browser-viewport">
-                                <div class="no-sandbox">
-                                    <i class="fa-solid fa-compass"></i>
-                                    <p>Playwright sandbox inactive.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Live Log terminal -->
-                    <div class="drawer-section">
-                        <h5>Real-time Agent Swarm Audit Logs</h5>
-                        <div class="logs-console" id="terminal-logs">
-                            <div class="log-line log-system">[System] Swarm log gateway connection active.</div>
-                        </div>
-                    </div>
-
+            <div class="sidebar-user">
+                <div class="user-avatar"><i class="fa-solid fa-circle-user"></i></div>
+                <div class="user-details">
+                    <span id="user-email-display" class="user-email">candidate@example.com</span>
+                    <span class="user-role">Verified Candidate</span>
                 </div>
+                <button class="logout-btn" id="btn-logout" onclick="handleLogout()" title="Sign Out">
+                    <i class="fa-solid fa-power-off"></i>
+                </button>
             </div>
+        </aside>
 
-            <!-- DRAWER TAB 3: Zero-Knowledge Cryptography Vault -->
-            <div id="tab-security" class="drawer-tab-content">
-                <div class="security-vault-container">
-                    <div class="vault-alert">
-                        <i class="fa-solid fa-shield-halved"></i>
-                        <span><strong>Zero-Knowledge Security:</strong> Your database inputs are strictly isolated.</span>
-                    </div>
-
-                    <div class="vault-block">
-                        <h5>Encrypted Context stored in local db</h5>
-                        <div class="code-editor" id="encrypted-json">
-{
-  "status": "No active task. Deploy a swarm task to view the isolated encryption record."
-}
-                        </div>
-                    </div>
-
-                    <div class="vault-block">
-                        <h5>Local Passphrase Decryptor Check</h5>
-                        <div class="drawer-form-group">
-                            <input type="password" id="decrypt-passphrase" class="drawer-control" placeholder="Enter original secret passphrase">
-                        </div>
-                        <button class="deploy-swarm-btn secondary-btn" onclick="verifyDecryption()">
-                            <i class="fa-solid fa-unlock"></i> Verify Local Decrypt
-                        </button>
-                        <div class="code-editor" id="decrypted-json" style="height: 120px; margin-top: 0.75rem;">
-Awaiting passphrase verify...
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <!-- CONTENT AREA -->
+        <main class="content-area">
             
+            <!-- PANEL 1: DASHBOARD -->
+            <section id="panel-dashboard" class="dashboard-panel active">
+                <div class="panel-header">
+                    <h2>Dashboard</h2>
+                    <p>Welcome to SarkariSwarm. Monitor eligibility parameters and trigger automated applications.</p>
+                </div>
+
+                <!-- Stats Counters -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon-wrapper match-icon"><i class="fa-solid fa-clipboard-check"></i></div>
+                        <div class="stat-details">
+                            <h3>Matching Exams</h3>
+                            <div class="stat-value" id="stat-eligible-count">0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon-wrapper applied-icon"><i class="fa-solid fa-check-double"></i></div>
+                        <div class="stat-details">
+                            <h3>Submitted Forms</h3>
+                            <div class="stat-value" id="stat-applied-count">0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon-wrapper free-icon"><i class="fa-solid fa-gift"></i></div>
+                        <div class="stat-details">
+                            <h3>Free Category Exams</h3>
+                            <div class="stat-value" id="stat-free-count">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Eligible Exams List -->
+                <div class="dashboard-section-title">
+                    <h3>Eligible Examinations</h3>
+                    <p>Only showing exams matching your qualifications, state, and age limits.</p>
+                </div>
+                <div class="eligible-exams-grid" id="exams-list-container">
+                    <div class="list-empty">
+                        <i class="fa-solid fa-circle-notch fa-spin"></i>
+                        <p>Fetching eligible exams from backend...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PANEL 2: PROFILE PAGE -->
+            <section id="panel-profile" class="dashboard-panel">
+                <div class="panel-header">
+                    <h2>My Profile</h2>
+                    <p>Store your application details. Data is encrypted and validated for zero-error submissions.</p>
+                </div>
+
+                <div class="workspace-card">
+                    <form id="profile-form" onsubmit="handleProfileSubmit(event)">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="profile-full-name"><i class="fa-solid fa-signature"></i> Full Name</label>
+                                <input type="text" id="profile-full-name" required placeholder="e.g. Amit Kumar">
+                            </div>
+                            <div class="form-group">
+                                <label for="profile-dob"><i class="fa-solid fa-calendar-days"></i> Date of Birth</label>
+                                <input type="date" id="profile-dob" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="profile-gender"><i class="fa-solid fa-venus-mars"></i> Gender</label>
+                                <select id="profile-gender" required>
+                                    <option value="" disabled selected>Select Gender</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Transgender">Transgender</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="profile-state"><i class="fa-solid fa-map"></i> State of Domicile</label>
+                                <input type="text" id="profile-state" required placeholder="e.g. Bihar">
+                            </div>
+                            <div class="form-group">
+                                <label for="profile-district"><i class="fa-solid fa-location-crosshairs"></i> District</label>
+                                <input type="text" id="profile-district" required placeholder="e.g. Patna">
+                            </div>
+                            <div class="form-group">
+                                <label for="profile-qualification"><i class="fa-solid fa-graduation-cap"></i> Qualification</label>
+                                <select id="profile-qualification" required>
+                                    <option value="" disabled selected>Select Qualification</option>
+                                    <option value="10th">10th Standard</option>
+                                    <option value="12th">12th Standard</option>
+                                    <option value="Graduate">Graduate</option>
+                                    <option value="Post Graduate">Post Graduate</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="profile-phone"><i class="fa-solid fa-phone"></i> Mobile Number</label>
+                                <input type="tel" id="profile-phone" required placeholder="9876543210" pattern="[0-9]{10}">
+                            </div>
+                            <div class="form-group">
+                                <label for="profile-email"><i class="fa-regular fa-envelope"></i> Email Address</label>
+                                <input type="email" id="profile-email" required placeholder="name@example.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="profile-aadhaar"><i class="fa-regular fa-id-card"></i> Aadhaar Card Number (12 digits)</label>
+                                <input type="text" id="profile-aadhaar" required placeholder="123456789012" pattern="[0-9]{12}|XXXX XXXX [0-9]{4}">
+                            </div>
+                            <div class="form-group">
+                                <label for="profile-pan"><i class="fa-solid fa-address-card"></i> PAN Card Number</label>
+                                <input type="text" id="profile-pan" placeholder="ABCDE1234F" pattern="[A-Z]{5}[0-9]{4}[A-Z]{1}">
+                            </div>
+
+                            <!-- Interactive Category Chips -->
+                            <div class="form-group form-col-span-2">
+                                <label><i class="fa-solid fa-layer-group"></i> Category Group</label>
+                                <div class="category-chips-container" id="category-chips-wrapper">
+                                    <button type="button" class="chip" data-category="GEN">GEN</button>
+                                    <button type="button" class="chip" data-category="OBC">OBC</button>
+                                    <button type="button" class="chip" data-category="SC">SC</button>
+                                    <button type="button" class="chip" data-category="ST">ST</button>
+                                    <button type="button" class="chip" data-category="EWS">EWS</button>
+                                    <button type="button" class="chip" data-category="PH">PH</button>
+                                    <button type="button" class="chip" data-category="EX">EX</button>
+                                </div>
+                                <input type="hidden" id="profile-category" required value="">
+                            </div>
+
+                            <!-- Passphrase Box for Zero-Knowledge Security -->
+                            <div class="form-group form-col-span-2 encryption-pass-box">
+                                <label for="profile-passphrase">
+                                    <i class="fa-solid fa-key"></i> Cryptographic Passphrase
+                                    <span class="tooltip-badge"><i class="fa-solid fa-shield"></i> On-Device Encryption</span>
+                                </label>
+                                <input type="password" id="profile-passphrase" required placeholder="Enter custom passphrase to encrypt/decrypt PII fields">
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" id="btn-profile-save" class="btn btn-primary">
+                                <span>Save Profile Vault</span> <i class="fa-solid fa-lock"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- PANEL 3: DOCUMENTS PAGE -->
+            <section id="panel-documents" class="dashboard-panel">
+                <div class="panel-header">
+                    <h2>Documents</h2>
+                    <p>Upload files below. Automated filling processes parse and submit these files as required by portals.</p>
+                </div>
+
+                <div class="documents-grid">
+                    <!-- Photo slot -->
+                    <div class="doc-card" id="doc-slot-photo">
+                        <div class="doc-badge pending" id="badge-photo">Missing</div>
+                        <div class="doc-icon"><i class="fa-regular fa-image"></i></div>
+                        <h5>Passport Photo</h5>
+                        <p class="file-spec">JPEG, Max 50KB</p>
+                        <form onsubmit="handleDocUploadForm(event, 'photo')" class="doc-upload-form">
+                            <input type="file" accept=".jpg,.jpeg" onchange="triggerDirectUpload(this)" style="display: none;" id="file-photo">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('file-photo').click()">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Upload
+                            </button>
+                        </form>
+                        <div class="doc-view-link" id="view-photo"></div>
+                    </div>
+
+                    <!-- Signature slot -->
+                    <div class="doc-card" id="doc-slot-signature">
+                        <div class="doc-badge pending" id="badge-signature">Missing</div>
+                        <div class="doc-icon"><i class="fa-solid fa-signature"></i></div>
+                        <h5>Signature Scan</h5>
+                        <p class="file-spec">JPEG, Max 20KB</p>
+                        <form onsubmit="handleDocUploadForm(event, 'signature')" class="doc-upload-form">
+                            <input type="file" accept=".jpg,.jpeg" onchange="triggerDirectUpload(this)" style="display: none;" id="file-signature">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('file-signature').click()">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Upload
+                            </button>
+                        </form>
+                        <div class="doc-view-link" id="view-signature"></div>
+                    </div>
+
+                    <!-- Aadhaar slot -->
+                    <div class="doc-card" id="doc-slot-aadhaar">
+                        <div class="doc-badge pending" id="badge-aadhaar">Missing</div>
+                        <div class="doc-icon"><i class="fa-regular fa-id-card"></i></div>
+                        <h5>Aadhaar Card</h5>
+                        <p class="file-spec">PDF/JPEG, Max 500KB</p>
+                        <form onsubmit="handleDocUploadForm(event, 'aadhaar')" class="doc-upload-form">
+                            <input type="file" accept=".pdf,.jpg,.jpeg" onchange="triggerDirectUpload(this)" style="display: none;" id="file-aadhaar">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('file-aadhaar').click()">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Upload
+                            </button>
+                        </form>
+                        <div class="doc-view-link" id="view-aadhaar"></div>
+                    </div>
+
+                    <!-- Caste Cert slot -->
+                    <div class="doc-card" id="doc-slot-caste_cert">
+                        <div class="doc-badge pending" id="badge-caste_cert">Missing</div>
+                        <div class="doc-icon"><i class="fa-solid fa-users"></i></div>
+                        <h5>Category Certificate</h5>
+                        <p class="file-spec">PDF/JPEG, SC/ST/OBC Waiver</p>
+                        <form onsubmit="handleDocUploadForm(event, 'caste_cert')" class="doc-upload-form">
+                            <input type="file" accept=".pdf,.jpg,.jpeg" onchange="triggerDirectUpload(this)" style="display: none;" id="file-caste_cert">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('file-caste_cert').click()">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Upload
+                            </button>
+                        </form>
+                        <div class="doc-view-link" id="view-caste_cert"></div>
+                    </div>
+
+                    <!-- Marksheet slot -->
+                    <div class="doc-card" id="doc-slot-marksheet">
+                        <div class="doc-badge pending" id="badge-marksheet">Missing</div>
+                        <div class="doc-icon"><i class="fa-solid fa-file-invoice"></i></div>
+                        <h5>10th Marksheet</h5>
+                        <p class="file-spec">PDF/JPEG, Education Verification</p>
+                        <form onsubmit="handleDocUploadForm(event, 'marksheet')" class="doc-upload-form">
+                            <input type="file" accept=".pdf,.jpg,.jpeg" onchange="triggerDirectUpload(this)" style="display: none;" id="file-marksheet">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('file-marksheet').click()">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Upload
+                            </button>
+                        </form>
+                        <div class="doc-view-link" id="view-marksheet"></div>
+                    </div>
+
+                    <!-- Degree slot (mapped to caste_cert or similar doc slots if needed, but we will store as marksheet or use it) -->
+                    <!-- We will upload degree file, mapped as castes/marksheet under doc_type and call upload document -->
+                    <div class="doc-card" id="doc-slot-degree">
+                        <div class="doc-badge pending" id="badge-degree">Missing</div>
+                        <div class="doc-icon"><i class="fa-solid fa-graduation-cap"></i></div>
+                        <h5>Degree / Diploma</h5>
+                        <p class="file-spec">PDF/JPEG, Graduate Qualification</p>
+                        <form onsubmit="handleDocUploadForm(event, 'degree')" class="doc-upload-form">
+                            <!-- We can map degree to custom doc_type or caste_cert, let's keep it clean since backend supports: photo, signature, aadhaar, caste_cert, marksheet -->
+                            <!-- Wait, backend only accepts: photo, signature, aadhaar, caste_cert, marksheet -->
+                            <!-- So for "degree", we will send it as marksheet or caste_cert, or let's use caste_cert/marksheet. Let's send as marksheet -->
+                            <input type="file" accept=".pdf,.jpg,.jpeg" onchange="triggerDirectUploadMapped(this, 'marksheet', 'degree')" style="display: none;" id="file-degree">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('file-degree').click()">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Upload
+                            </button>
+                        </form>
+                        <div class="doc-view-link" id="view-degree"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PANEL 4: APPLIED HISTORY -->
+            <section id="panel-applied" class="dashboard-panel">
+                <div class="panel-header">
+                    <h2>Applied Forms</h2>
+                    <p>Track progress, audit logs, and download application confirmations.</p>
+                </div>
+
+                <div class="workspace-card">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Application ID</th>
+                                    <th>Exam Name</th>
+                                    <th>Official Link</th>
+                                    <th>Applied On</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="applied-table-body">
+                                <tr>
+                                    <td colspan="5" class="table-empty">Loading submitted forms history...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- REAL-TIME TRACKING MONITOR MODAL (AUTO APPLY MODAL) -->
+    <div class="monitor-modal-overlay" id="apply-monitor-modal">
+        <div class="monitor-modal-card">
+            <div class="monitor-modal-header">
+                <div class="header-left">
+                    <span class="badge badge-active"><i class="fa-solid fa-circle-notch fa-spin"></i> Agent Swarm Engine Active</span>
+                    <h3 id="monitor-exam-title">Exam Form Submission Pipeline</h3>
+                </div>
+                <button class="close-modal-btn" onclick="closeApplyMonitor()">&times;</button>
+            </div>
+
+            <div class="monitor-layout-grid">
+                <!-- Progress Stepper Checklist -->
+                <div class="monitor-steps-section">
+                    <h5>Submission Steps</h5>
+                    <div class="pipeline-steps-list" id="monitor-steps-list">
+                        <!-- Step items loaded dynamically -->
+                        <div class="step-row" id="step-initializing">
+                            <div class="step-pt"></div>
+                            <span>Initializing Browser Sandbox</span>
+                        </div>
+                        <div class="step-row" id="step-creating_account">
+                            <div class="step-pt"></div>
+                            <span>OTR Account Creation</span>
+                        </div>
+                        <div class="step-row" id="step-filling_profile">
+                            <div class="step-pt"></div>
+                            <span>Filling Profile Forms</span>
+                        </div>
+                        <div class="step-row" id="step-uploading_documents">
+                            <div class="step-pt"></div>
+                            <span>Uploading Certificates</span>
+                        </div>
+                        <div class="step-row" id="step-processing_payment">
+                            <div class="step-pt"></div>
+                            <span>Fee Payment Settlement</span>
+                        </div>
+                    </div>
+
+                    <!-- Verification Audit Progress Container -->
+                    <div class="qa-consensus-box">
+                        <div class="qa-header">
+                            <h5>Verification Progress</h5>
+                            <span class="qa-badge" id="monitor-qa-verdict">Running checks...</span>
+                        </div>
+                        <div class="consensus-meter-container">
+                            <div class="consensus-progress-bar">
+                                <div class="consensus-progress-fill" id="monitor-consensus-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sandbox emulation & logs -->
+                <div class="monitor-sandbox-section">
+                    <h5>Playwright Viewport Emulation</h5>
+                    <div class="browser-emulator">
+                        <div class="emulator-header">
+                            <div class="emulator-dots">
+                                <span class="dot red"></span>
+                                <span class="dot yellow"></span>
+                                <span class="dot green"></span>
+                            </div>
+                            <div class="emulator-url" id="monitor-emulator-url">about:blank</div>
+                        </div>
+                        <div class="emulator-body" id="monitor-emulator-viewport">
+                            <div class="emulator-inactive" id="emulator-status-box">
+                                <i class="fa-solid fa-compass"></i>
+                                <p>Playwright session starting...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h5>Real-time Agent Activity Log</h5>
+                    <div class="terminal-box" id="monitor-terminal-logs">
+                        <div class="terminal-line system">[System] Connection established to Event Stream.</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- OTP Code Modal Dialog Popup -->
-    <div class="otp-modal-overlay" id="otp-dialog">
-        <div class="otp-modal-card">
-            <div class="otp-card-icon">
-                <i class="fa-solid fa-shield-cat"></i>
-            </div>
-            <h4>OTP Validation Signal Requested</h4>
-            <p>The form automation requires an OTP challenge response. Please type the 6-digit OTP code below.</p>
-            <div class="otp-code-inputs">
-                <input type="text" class="otp-code-box" maxlength="1" onkeyup="focusNextOtp(this, 1)">
-                <input type="text" class="otp-code-box" maxlength="1" onkeyup="focusNextOtp(this, 2)">
-                <input type="text" class="otp-code-box" maxlength="1" onkeyup="focusNextOtp(this, 3)">
-                <input type="text" class="otp-code-box" maxlength="1" onkeyup="focusNextOtp(this, 4)">
-                <input type="text" class="otp-code-box" maxlength="1" onkeyup="focusNextOtp(this, 5)">
-                <input type="text" class="otp-code-box" maxlength="1" onkeyup="focusNextOtp(this, 6)">
-            </div>
-            <div class="otp-modal-buttons">
-                <button class="otp-modal-btn cancel-btn" onclick="closeOtpModal()">Dismiss</button>
-                <button class="otp-modal-btn confirm-btn" onclick="submitOtpCode()">Submit OTP</button>
-            </div>
-        </div>
-    </div>
+    <!-- Notification Toast -->
+    <div id="toast-notification" class="toast"></div>
 
-    <!-- Javascript Core controller -->
     <script src="app.js"></script>
 </body>
 </html>

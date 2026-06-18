@@ -1,791 +1,807 @@
-// Global states
+// SarkariSwarm - Core Javascript Application Coordinator
+
+let authToken = null;
 let activeTaskId = null;
-let statusInterval = null;
-let currentJobs = [];
-let otpModalOpened = false;
+let activeEventSource = null;
+let selectedCategory = "";
+let activePortalUrl = "https://upsconline.nic.in";
 
-// WebSockets connection URL derivation
-const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-const wsUrl = `${wsProtocol}${window.location.host}/api/v1/jobs/ws`;
-
-// Init on load
-document.addEventListener('DOMContentLoaded', () => {
-    fetchLatestJobs();
-    initWebSocket();
-    autoLoginAndLoadProfile();
-    
-    // Request notification permissions
-    if (window.Notification && Notification.permission === 'default') {
-        Notification.requestPermission();
+// Global Fetch Interceptor for 401 Unauthorized
+const originalFetch = window.fetch;
+window.fetch = async function (url, options) {
+    const response = await originalFetch(url, options);
+    if (response.status === 401) {
+        const urlStr = String(url);
+        if (!urlStr.includes('/auth/login') && !urlStr.includes('/auth/register')) {
+            handleLogout();
+            showToast("Session expired. Please sign in again.", "error");
+        }
     }
+    return response;
+};
+
+// Initialize App on DOM Load
+document.addEventListener('DOMContentLoaded', () => {
+    initApp();
+    setupCategoryChips();
 });
 
-// Initialize WebSocket Connection
-function initWebSocket() {
-    console.log("Connecting to live job alert stream via WebSockets...");
-    const ws = new WebSocket(wsUrl);
+// Helper: Toast Notifications
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast-notification');
+    toast.className = `toast ${type} active`;
+    toast.innerText = message;
     
-    ws.onmessage = (event) => {
-        try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'new_job' && data.job) {
-                handleNewJobBroadcast(data.job);
-            }
-        } catch (e) {
-            console.error("Failed to parse WebSocket packet", e);
-        }
-    };
-    
-    ws.onclose = () => {
-        console.warn("WebSocket closed. Attempting reconnect in 5s...");
-        setTimeout(initWebSocket, 5000);
-    };
-    
-    ws.onerror = (err) => {
-        console.error("WebSocket error:", err);
-    };
-}
-
-// Handle real-time job update broadcast
-function handleNewJobBroadcast(job) {
-    // Check duplicates
-    if (currentJobs.some(j => j.link === job.link)) return;
-    
-    // Push to top of jobs array
-    currentJobs.unshift(job);
-    renderLiveJobs(currentJobs);
-    
-    // Show browser desktop notifications
-    if (window.Notification && Notification.permission === 'granted') {
-        new Notification("SarkariSwarm Live Job Alert", {
-            body: job.title
-        });
-    }
-    
-    // Highlight the newest item at the top with a temporary pulse class
     setTimeout(() => {
-        const firstItem = document.querySelector('.live-list .live-item');
-        if (firstItem) {
-            firstItem.classList.add('new-pulse-alert');
-            // Remove after 6 seconds
-            setTimeout(() => firstItem.classList.remove('new-pulse-alert'), 6000);
-        }
-    }, 100);
+        toast.classList.remove('active');
+    }, 4000);
 }
 
-// Fetch Live Jobs from Backend Scraper API
-async function fetchLatestJobs() {
-    const container = document.getElementById('live-updates-container');
+// Helper: Parse email from JWT token payload
+function parseJwtEmail(token) {
     try {
-        const response = await fetch('/api/v1/jobs/latest');
-        if (!response.ok) throw new Error("Scraper API returned error status");
-        
-        currentJobs = await response.json();
-        renderLiveJobs(currentJobs);
-    } catch (err) {
-        console.warn("Failed to fetch live job feeds, loading fallback notifications.", err);
-        // Fallback structured data
-        currentJobs = [
-            {
-                "title": "UPSC Civil Services Examination 2026 - Apply Online for 1056 Posts",
-                "link": "https://upsconline.nic.in",
-                "date": new Date().toISOString(),
-                "category": "Central Jobs"
-            },
-            {
-                "title": "SSC Combined Graduate Level (CGL) 2026 - 15000+ Vacancies Announced",
-                "link": "https://ssc.gov.in",
-                "date": new Date(Date.now() - 3600000).toISOString(),
-                "category": "Central Jobs"
-            },
-            {
-                "title": "BPSC 71st Civil Services (Pre) Exam 2026 - Notification Out",
-                "link": "https://bpsc.bih.nic.in",
-                "date": new Date(Date.now() - 7200000).toISOString(),
-                "category": "State Jobs"
-            },
-            {
-                "title": "IBPS Bank PO / MT XIV Recruitment 2026 - Apply Online for 4455 Posts",
-                "link": "https://www.ibps.in",
-                "date": new Date(Date.now() - 14400000).toISOString(),
-                "category": "Bank Jobs"
-            }
-        ];
-        renderLiveJobs(currentJobs);
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        const payload = JSON.parse(jsonPayload);
+        return payload.sub; // sub holds the user email
+    } catch (e) {
+        return null;
     }
 }
 
-// Render Job listings to Today Live Updates list
-function renderLiveJobs(jobs) {
-    const container = document.getElementById('live-updates-container');
-    if (!jobs || jobs.length === 0) {
-        container.innerHTML = `<p style="text-align: center; font-size: 0.8rem; color: var(--fja-muted); padding: 20px;">No updates available today.</p>`;
-        return;
-    }
-    
-    container.innerHTML = '';
-    jobs.forEach(job => {
-        const item = document.createElement('div');
-        item.className = 'live-item';
-        
-        // Formulate relative time string
-        const timeDiff = Date.now() - new Date(job.date).getTime();
-        let timeLabel = 'Recent';
-        if (timeDiff > 0) {
-            const hours = Math.floor(timeDiff / (1000 * 60 * 60));
-            const mins = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-            if (hours > 0) timeLabel = `${hours}h ago`;
-            else if (mins > 0) timeLabel = `${mins}m ago`;
-            else timeLabel = 'Just now';
-        }
-        
-        item.innerHTML = `
-            <div class="live-item-content" onclick="triggerAutoFill('${job.title}', '${job.link}')">
-                <div class="live-item-title">${job.title}</div>
-                <div class="live-item-meta">
-                    <span class="live-item-cat">${job.category || 'Govt Jobs'}</span>
-                    <span>${timeLabel}</span>
-                </div>
-            </div>
-            <button class="live-auto-apply-btn" onclick="event.stopPropagation(); triggerAutoApply('${job.title}', '${job.link}')">
-                <i class="fa-solid fa-bolt"></i> Auto Apply
-            </button>
-        `;
-        container.appendChild(item);
-    });
-}
-
-// Filter jobs category wise
-function filterCategory(category) {
-    if (category === 'all') {
-        renderLiveJobs(currentJobs);
-        return;
-    }
-    const filtered = currentJobs.filter(job => job.category === category);
-    renderLiveJobs(filtered);
-}
-
-// Handle global search input box
-function handleSearch(query) {
-    if (!query) {
-        renderLiveJobs(currentJobs);
-        return;
-    }
-    const filtered = currentJobs.filter(job => 
-        job.title.toLowerCase().includes(query.toLowerCase()) ||
-        (job.category && job.category.toLowerCase().includes(query.toLowerCase()))
-    );
-    renderLiveJobs(filtered);
-}
-
-// Trigger Form fill drawer
-function triggerAutoFill(jobTitle, url) {
-    const drawer = document.getElementById('swarm-drawer');
-    drawer.classList.add('active');
-    
-    // Switch to profile tab
-    switchDrawerTab('tab-autofill');
-    
-    // Set target commands
-    const cleanTitle = jobTitle.split('-')[0].trim();
-    document.getElementById('chat-command').value = `Fill my application form for: ${cleanTitle}. Portal Link: ${url}`;
-    
-    // Pre-populate sample testing values for convenience
-    document.getElementById('user-name').value = 'Amit Kumar';
-    document.getElementById('aadhaar-number').value = '987654321098';
-    document.getElementById('phone-number').value = '9999999999';
-    document.getElementById('email-address').value = 'amit14916@gmail.com';
-    document.getElementById('exam-center').value = 'New Delhi';
-    document.getElementById('passphrase').value = 'test_passphrase_123';
-    
-    window.selectedJobUrl = url;
-}
-
-// Trigger Automated Swarm Execution directly (Auto Apply)
-function triggerAutoApply(jobTitle, url) {
-    // Populate form fields
-    triggerAutoFill(jobTitle, url);
-    
-    // Switch to visual pipeline monitor tab
-    switchDrawerTab('tab-pipeline');
-    
-    // Log intent
-    appendLog(`[System] Auto-Apply triggered for: ${jobTitle}`, 'log-line log-success');
-    appendLog(`[System] Submitting task to agent queue automatically...`, 'log-line log-system');
-    
-    // Fire submission form submit handler
-    const form = document.getElementById('submission-form');
-    if (form) {
-        // Dispatch submit event synchronously
-        const event = new Event('submit', { cancelable: true, bubbles: true });
-        form.dispatchEvent(event);
-    }
-}
-
-// Drawer tab controls
-function switchDrawerTab(tabId) {
-    document.querySelectorAll('.drawer-tab-content').forEach(c => c.classList.remove('active'));
-    document.querySelectorAll('.drawer-tab-btn').forEach(b => b.classList.remove('active'));
-    
-    document.getElementById(tabId).classList.add('active');
-    
-    // Highlight button
-    const buttons = document.querySelectorAll('.drawer-tab-btn');
-    buttons.forEach(btn => {
-        if (btn.getAttribute('onclick').includes(tabId)) {
-            btn.classList.add('active');
-        }
-    });
-}
-
-function closeDrawer() {
-    document.getElementById('swarm-drawer').classList.remove('active');
-}
-
-// Deploy Swarm Task (Auto-Apply)
-async function deploySwarmTask(event) {
-    if (event) event.preventDefault();
-    
+// Initialize application state
+function initApp() {
     const token = localStorage.getItem('auth_token');
-    if (!token) {
-        appendLog(`[Error] Not authenticated. Please reload the page.`, 'log-line log-error');
-        return;
+    if (token) {
+        authToken = token;
+        showMainApp();
+    } else {
+        showAuthScreen();
     }
+}
+
+function showAuthScreen() {
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('app-screen').style.display = 'none';
+}
+
+function showMainApp() {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'grid';
     
-    const commandText = document.getElementById('chat-command').value;
-    const passphrase = document.getElementById('passphrase').value;
+    // Set user email in sidebar display
+    const email = parseJwtEmail(authToken);
+    document.getElementById('user-email-display').innerText = email || "candidate@sarkariswarm.in";
     
-    // Extract exam name from instruction command
-    let examName = "UPSC Civil Services Examination 2026";
-    if (commandText.includes("for: ")) {
-        examName = commandText.split("for: ")[1].split(".")[0].trim();
-    } else if (commandText.includes("for ")) {
-        examName = commandText.split("for ")[1].split(".")[0].trim();
+    // Switch to default panel: Dashboard
+    switchPanel('panel-dashboard');
+}
+
+// Switching Auth Tabs (Login / Register)
+function switchAuthTab(tab) {
+    document.querySelectorAll('.auth-tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
+    
+    if (tab === 'login') {
+        document.getElementById('tab-login-btn').classList.add('active');
+        document.getElementById('login-form').classList.add('active');
+    } else {
+        document.getElementById('tab-register-btn').classList.add('active');
+        document.getElementById('register-form').classList.add('active');
     }
-    
-    // Step 1: Save/update the user profile first to capture any changes
-    appendLog(`[System] Saving profile changes...`, 'log-line log-system');
-    const profilePayload = {
-        full_name: document.getElementById('user-name').value,
-        dob: document.getElementById('dob').value || '1998-05-15',
-        gender: document.getElementById('gender').value,
-        category: document.getElementById('category').value,
-        state: document.getElementById('state').value || 'Bihar',
-        qualification: document.getElementById('qualification').value,
-        phone: document.getElementById('phone-number').value,
-        aadhaar: document.getElementById('aadhaar-number').value,
-        email: document.getElementById('email-address').value
-    };
+}
+
+// 1. SIGN IN API CALL
+async function handleLoginSubmit(event) {
+    event.preventDefault();
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
     
     try {
-        const profileResponse = await fetch('/profile', {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(profilePayload)
-        });
-        
-        if (!profileResponse.ok) {
-            const errData = await profileResponse.json();
-            throw new Error(errData.detail || "Failed to save profile");
-        }
-        
-        appendLog(`[System] Profile saved successfully.`, 'log-line log-success');
-    } catch (err) {
-        appendLog(`[Error] Profile save failed: ${err.message}`, 'log-line log-error');
-        return;
-    }
-    
-    // Step 2: Trigger /exams/apply/{exam_name}
-    appendLog(`[System] Initiating application pipeline for ${examName}...`, 'log-line log-system');
-    
-    // Reset browser views in UI
-    document.getElementById('browser-viewport').innerHTML = `
-        <div class="no-sandbox">
-            <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.5rem; color: var(--accent);"></i>
-            <p style="margin-top: 5px;">Launching bot-bypass Playwright sandbox...</p>
-        </div>
-    `;
-    document.getElementById('browser-url').innerText = "about:blank";
-    
-    // Show pipeline tab
-    document.getElementById('pipeline-tab-btn').click();
-    
-    try {
-        const applyResponse = await fetch(`/exams/apply/${encodeURIComponent(examName)}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ passphrase })
-        });
-        
-        const applyData = await applyResponse.json();
-        if (!applyResponse.ok) {
-            throw new Error(applyData.detail || "Failed to trigger apply endpoint");
-        }
-        
-        activeTaskId = applyData.task_id;
-        const websocketUrl = applyData.websocket_url;
-        
-        appendLog(`[System] Pipeline scheduled. Task ID: ${activeTaskId}`, 'log-line log-success');
-        
-        // Connect to WebSocket to track status
-        connectToTaskWebSocket(websocketUrl);
-        
-    } catch (err) {
-        appendLog(`[Error] Apply failed: ${err.message}`, 'log-line log-error');
-        document.getElementById('browser-viewport').innerHTML = `
-            <div class="no-sandbox" style="color: var(--danger);">
-                <i class="fa-solid fa-triangle-exclamation" style="font-size: 2rem;"></i>
-                <p style="margin-top: 5px;">Pipeline launch failed: ${err.message}</p>
-            </div>
-        `;
-    }
-}
-
-let taskSocket = null;
-
-function connectToTaskWebSocket(wsPath) {
-    if (taskSocket) {
-        taskSocket.close();
-    }
-    
-    // Clear previous logs
-    const consoleLogs = document.getElementById('terminal-logs');
-    consoleLogs.innerHTML = `<div class="log-line log-system">[System] Monitoring task logs in real-time...</div>`;
-    
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-    const socketUrl = `${wsProtocol}${window.location.host}${wsPath}`;
-    
-    console.log("Connecting to task websocket:", socketUrl);
-    taskSocket = new WebSocket(socketUrl);
-    
-    taskSocket.onmessage = (event) => {
-        try {
-            const data = JSON.parse(event.data);
-            const status = data.status;
-            const message = data.message;
-            
-            let logClass = 'log-line';
-            if (status === 'failed') {
-                logClass = 'log-line log-error';
-            } else if (status === 'submitted') {
-                logClass = 'log-line log-success';
-            } else if (status === 'payment_pending') {
-                logClass = 'log-line log-warning';
-            } else if (status === 'processing_payment') {
-                logClass = 'log-line log-warning';
-            }
-            
-            appendLog(`[${status.toUpperCase()}] ${message}`, logClass);
-            
-            // Update pipeline progress UI
-            updateStepsProgressUI(status);
-            
-            // Handle specific status outcomes
-            if (status === 'payment_pending' && data.phonepay_url) {
-                document.getElementById('browser-viewport').innerHTML = `
-                    <div class="no-sandbox" style="color: var(--warning);">
-                        <i class="fa-solid fa-credit-card" style="font-size: 2rem; margin-bottom: 5px;"></i>
-                        <p style="font-weight: bold;">Payment Pending (PhonePe)</p>
-                        <a href="${data.phonepay_url}" target="_blank" class="live-auto-apply-btn" style="display:inline-block; margin-top:10px; text-decoration:none; padding: 8px 12px; background: var(--accent); color: white; border-radius: 4px; font-weight: bold;">
-                            <i class="fa-solid fa-external-link"></i> Pay Now
-                        </a>
-                    </div>
-                `;
-            } else if (status === 'submitted') {
-                const conf = data.confirmation_number || "REG-CONFIRMED";
-                document.getElementById('browser-viewport').innerHTML = `
-                    <div class="no-sandbox" style="color: var(--success);">
-                        <i class="fa-solid fa-circle-check" style="font-size: 2rem; margin-bottom: 5px;"></i>
-                        <p style="font-weight: bold;">Form Submitted Successfully</p>
-                        <p style="font-size: 0.75rem;">Confirmation: ${conf}</p>
-                    </div>
-                `;
-            } else if (status === 'failed') {
-                document.getElementById('browser-viewport').innerHTML = `
-                    <div class="no-sandbox" style="color: var(--danger);">
-                        <i class="fa-solid fa-circle-xmark" style="font-size: 2rem; margin-bottom: 5px;"></i>
-                        <p style="font-weight: bold;">Application Failed</p>
-                        <button class="live-auto-apply-btn" onclick="deploySwarmTask()" style="margin-top:10px;">
-                            <i class="fa-solid fa-rotate-right"></i> Retry Application
-                        </button>
-                    </div>
-                `;
-            }
-        } catch (err) {
-            console.error("Failed to parse WebSocket packet", err);
-        }
-    };
-    
-    taskSocket.onclose = () => {
-        console.warn("Task WebSocket closed.");
-    };
-}
-
-function updateStepsProgressUI(status) {
-    const container = document.getElementById('steps-container');
-    container.innerHTML = '';
-    
-    const steps = [
-        { name: "Initializing", key: "initializing" },
-        { name: "Creating Account", key: "creating_account" },
-        { name: "Filling Profile", key: "filling_profile" },
-        { name: "Uploading Documents", key: "uploading_documents" },
-        { name: "Processing Payment", key: "processing_payment" }
-    ];
-    
-    let currentIdx = -1;
-    for (let i = 0; i < steps.length; i++) {
-        if (status === steps[i].key) {
-            currentIdx = i;
-            break;
-        }
-    }
-    
-    if (status === 'submitted') currentIdx = 5;
-    else if (status === 'payment_pending') currentIdx = 4;
-    else if (status === 'failed') currentIdx = 4;
-    
-    steps.forEach((step, idx) => {
-        const row = document.createElement('div');
-        let statusClass = 'step-row';
-        
-        if (status === 'failed' && idx === currentIdx) {
-            statusClass += ' active failed';
-        } else if (idx < currentIdx || status === 'submitted') {
-            statusClass += ' completed';
-        } else if (idx === currentIdx) {
-            statusClass += ' active';
-            
-            const urlInput = document.getElementById('browser-url');
-            if (idx === 1) urlInput.innerText = window.selectedJobUrl || "https://upsconline.nic.in/otr/registration";
-            else if (idx > 1 && urlInput.innerText === "about:blank") urlInput.innerText = window.selectedJobUrl || "https://upsconline.nic.in/otr/registration";
-        }
-        
-        row.className = statusClass;
-        row.innerHTML = `
-            <div class="step-pt"></div>
-            <span>${step.name}</span>
-        `;
-        container.appendChild(row);
-    });
-}
-
-// Update Logs console
-function updateLogsConsole(logs) {
-    const terminal = document.getElementById('terminal-logs');
-    const lineCount = terminal.querySelectorAll('.log-line').length - 1; // subtract init line
-    
-    if (logs.length > lineCount) {
-        for (let i = lineCount; i < logs.length; i++) {
-            const text = logs[i];
-            let type = 'log-line';
-            
-            if (text.includes('[Error]') || text.includes('failed') || text.includes('violation')) {
-                type = 'log-line log-error';
-            } else if (text.includes('[ConsensusEngine]') || text.includes('votes') || text.includes('Auditor')) {
-                type = 'log-line log-warning';
-            } else if (text.includes('success') || text.includes('Success') || text.includes('healed') || text.includes('Completed')) {
-                type = 'log-line log-success';
-            }
-            
-            appendLog(text, type);
-            
-            // Trigger OTP modal popup if logs indicate OTP wait state
-            if (text.includes('OTP') && !otpModalOpened) {
-                openOtpModal();
-            }
-            // Trigger Captcha view on simulation browser box
-            if (text.includes('captcha') || text.includes('CAPTCHA')) {
-                document.getElementById('browser-viewport').innerHTML = `
-                    <div class="no-sandbox" style="color: var(--warning);">
-                        <i class="fa-solid fa-key" style="font-size: 1.8rem; margin-bottom: 5px;"></i>
-                        <p style="font-weight: bold;">Decrypting CAPTCHA...</p>
-                        <p style="font-size: 0.65rem;">Invoking Playwright image solving hook</p>
-                    </div>
-                `;
-            }
-        }
-    }
-}
-
-function appendLog(text, className) {
-    const terminal = document.getElementById('terminal-logs');
-    const el = document.createElement('div');
-    el.className = className;
-    const time = new Date().toLocaleTimeString();
-    el.innerText = `[${time}] ${text}`;
-    terminal.appendChild(el);
-    terminal.scrollTop = terminal.scrollHeight;
-}
-
-// Update Consensus meter
-function updateConsensusCircle(data) {
-    const percent = document.getElementById('consensus-percent');
-    const fill = document.getElementById('consensus-fill');
-    const verdict = document.getElementById('consensus-verdict');
-    
-    let score = 0;
-    let hasVote = false;
-    
-    data.logs.forEach(log => {
-        if (log.includes('[ConsensusEngine] Tabulated QA consensus:')) {
-            const match = log.match(/Score=([0-9.]+)/);
-            if (match) {
-                score = parseFloat(match[1]) * 100;
-                hasVote = true;
-            }
-        }
-    });
-    
-    if (data.status === 'COMPLETED') {
-        score = 100;
-        hasVote = true;
-    }
-    
-    if (hasVote) {
-        percent.innerText = `${Math.round(score)}%`;
-        fill.style.width = `${score}%`;
-        
-        if (score >= 70) {
-            verdict.innerText = "QA Consensus Passed";
-            verdict.style.color = "var(--success)";
-            
-            if (data.status !== 'COMPLETED') {
-                document.getElementById('browser-viewport').innerHTML = `
-                    <div class="no-sandbox" style="color: var(--accent);">
-                        <i class="fa-solid fa-paper-plane fa-spin" style="font-size: 1.5rem;"></i>
-                        <p style="margin-top: 5px;">Submitting finalized form details...</p>
-                    </div>
-                `;
-            }
-        } else {
-            verdict.innerText = "QA Rejected. Self-Healing...";
-            verdict.style.color = "var(--warning)";
-        }
-    } else if (data.status === 'FAILED') {
-        percent.innerText = "0%";
-        fill.style.width = "0%";
-        verdict.innerText = "Execution failed";
-        verdict.style.color = "var(--danger)";
-    }
-}
-
-// OTP Modal Dialogs
-function openOtpModal() {
-    otpModalOpened = true;
-    document.getElementById('otp-dialog').classList.add('active');
-}
-
-function closeOtpModal() {
-    document.getElementById('otp-dialog').classList.remove('active');
-    otpModalOpened = false;
-}
-
-function focusNextOtp(input, idx) {
-    if (input.value.length === 1 && idx < 6) {
-        const boxes = document.querySelectorAll('.otp-code-box');
-        if (boxes[idx]) boxes[idx].focus();
-    }
-}
-
-async function submitOtpCode() {
-    if (!activeTaskId) return;
-    
-    let otp = '';
-    document.querySelectorAll('.otp-code-box').forEach(b => {
-        otp += b.value.trim();
-    });
-    
-    if (otp.length !== 6) {
-        alert("Please input a valid 6-digit OTP code");
-        return;
-    }
-    
-    appendLog(`[System] OTP entered. Posting webhook validation payload...`, 'log-line log-system');
-    
-    try {
-        const response = await fetch(`/api/v1/chat-gateway/tasks/${activeTaskId}/otp`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ otp: otp })
-        });
-        
-        if (!response.ok) throw new Error("OTP rejected");
-        
-        closeOtpModal();
-        appendLog(`[Webhook] OTP dispatched successfully. Swarm task resumed.`, 'log-line log-success');
-        
-        document.getElementById('browser-viewport').innerHTML = `
-            <div class="no-sandbox" style="color: var(--success);">
-                <i class="fa-solid fa-lock-open" style="font-size: 1.5rem;"></i>
-                <p style="margin-top: 5px;">OTP Verification Successful</p>
-            </div>
-        `;
-    } catch (err) {
-        appendLog(`[Error] OTP submit failed: ${err.message}`, 'log-line log-error');
-    }
-}
-
-// ZK Vault Encrypted State Fetcher
-async function fetchIsolatedState() {
-    if (!activeTaskId) return;
-    
-    try {
-        const response = await fetch(`/api/v1/chat-gateway/tasks/${activeTaskId}/encrypted-state`);
-        if (!response.ok) throw new Error("Error loading ZK state");
-        
-        const data = await response.json();
-        document.getElementById('encrypted-json').innerText = JSON.stringify(data.encrypted_context, null, 2);
-    } catch (err) {
-        console.error("ZK fetch fail", err);
-    }
-}
-
-// Local Passphrase Decryption verification
-async function verifyDecryption() {
-    if (!activeTaskId) {
-        alert("Please run a task registration first!");
-        return;
-    }
-    
-    const passphrase = document.getElementById('decrypt-passphrase').value;
-    if (!passphrase) {
-        alert("Please enter your decryption passphrase");
-        return;
-    }
-    
-    const logViewer = document.getElementById('decrypted-json');
-    logViewer.innerText = "Deriving local key and decrypting context...";
-    
-    try {
-        const response = await fetch(`/api/v1/chat-gateway/tasks/${activeTaskId}/decrypt-output?passphrase=${encodeURIComponent(passphrase)}`, {
-            method: 'POST'
-        });
-        
-        if (!response.ok) throw new Error("Invalid passphrase or payload corruption");
-        
-        const data = await response.json();
-        logViewer.innerText = JSON.stringify(data.decrypted_context, null, 2);
-        logViewer.style.color = "var(--success)";
-    } catch (err) {
-        logViewer.innerText = `[DECRYPT FAIL] Authentication error: ${err.message}`;
-        logViewer.style.color = "var(--danger)";
-    }
-}
-
-// Helper: Auto register/login default user on page load
-async function autoLoginAndLoadProfile() {
-    try {
-        const email = "user@example.com";
-        const password = "password123";
-        const phone = "9999999999";
-        
-        // 1. Try to register
-        await fetch('/auth/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, phone })
-        });
-        
-        // 2. Login to obtain JWT token
-        const loginResponse = await fetch('/auth/login', {
+        const response = await fetch('/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
         });
         
-        if (loginResponse.ok) {
-            const loginData = await loginResponse.json();
-            const token = loginData.access_token;
-            localStorage.setItem('auth_token', token);
-            console.log("Authenticated default user successfully.");
-            
-            // 3. Load user profile and fill dashboard controls
-            await loadUserProfile(token);
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.detail || "Authentication credentials failed");
         }
+        
+        authToken = data.access_token;
+        localStorage.setItem('auth_token', authToken);
+        showToast("Signed in successfully!");
+        showMainApp();
     } catch (err) {
-        console.error("Auto login error:", err);
+        showToast(err.message, 'error');
     }
 }
 
-async function loadUserProfile(token) {
+// 2. REGISTER API CALL
+async function handleRegisterSubmit(event) {
+    event.preventDefault();
+    const email = document.getElementById('register-email').value.trim();
+    const phone = document.getElementById('register-phone').value.trim();
+    const password = document.getElementById('register-password').value;
+    
+    try {
+        const response = await fetch('/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, phone })
+        });
+        
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.detail || "Registration failed");
+        }
+        
+        showToast("Registration successful! Please login.");
+        switchAuthTab('login');
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+// SIGN OUT
+function handleLogout() {
+    authToken = null;
+    localStorage.removeItem('auth_token');
+    sessionStorage.removeItem('zk_passphrase');
+    showToast("Signed out successfully.");
+    showAuthScreen();
+}
+
+// 3. SIDEBAR NAVIGATION CONTROLLER
+function switchPanel(panelId) {
+    document.querySelectorAll('.dashboard-panel').forEach(panel => panel.classList.remove('active'));
+    document.querySelectorAll('.sidebar-menu .menu-item').forEach(menu => menu.classList.remove('active'));
+    
+    document.getElementById(panelId).classList.add('active');
+    
+    const menuItem = document.getElementById(`nav-${panelId}`);
+    if (menuItem) {
+        menuItem.classList.add('active');
+    }
+    
+    // Trigger panel-specific loaders
+    if (panelId === 'panel-dashboard') {
+        loadDashboard();
+    } else if (panelId === 'panel-profile') {
+        loadProfile();
+    } else if (panelId === 'panel-documents') {
+        loadDocuments();
+    } else if (panelId === 'panel-applied') {
+        loadApplied();
+    }
+}
+
+// 4. PROFILE CONTROLLER & INTERACTIVE CHIPS
+function setupCategoryChips() {
+    const chipWrapper = document.getElementById('category-chips-wrapper');
+    if (!chipWrapper) return;
+    
+    chipWrapper.addEventListener('click', (e) => {
+        const chip = e.target.closest('.chip');
+        if (!chip) return;
+        
+        // Remove active class from all sibling chips
+        chipWrapper.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        
+        // Mark selected chip active
+        chip.classList.add('active');
+        selectedCategory = chip.getAttribute('data-category');
+        document.getElementById('profile-category').value = selectedCategory;
+    });
+}
+
+async function loadProfile() {
     try {
         const response = await fetch('/profile', {
-            method: 'GET',
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 'Authorization': `Bearer ${authToken}` }
         });
         
         if (response.ok) {
             const profile = await response.json();
-            document.getElementById('user-name').value = profile.full_name;
-            document.getElementById('dob').value = profile.dob;
-            document.getElementById('gender').value = profile.gender;
-            document.getElementById('category').value = profile.category;
-            document.getElementById('state').value = profile.state;
-            document.getElementById('qualification').value = profile.qualification;
-            document.getElementById('phone-number').value = profile.phone;
-            document.getElementById('email-address').value = profile.email;
-            document.getElementById('aadhaar-number').value = profile.aadhaar_decrypted || "";
-        } else if (response.status === 404) {
-            await saveDefaultProfile(token);
+            document.getElementById('profile-full-name').value = profile.full_name || '';
+            document.getElementById('profile-dob').value = profile.dob || '';
+            document.getElementById('profile-gender').value = profile.gender || '';
+            document.getElementById('profile-state').value = profile.state || '';
+            document.getElementById('profile-district').value = profile.district || '';
+            document.getElementById('profile-qualification').value = profile.qualification || '';
+            document.getElementById('profile-phone').value = profile.phone || '';
+            document.getElementById('profile-email').value = profile.email || '';
+            document.getElementById('profile-aadhaar').value = profile.aadhaar_decrypted || '';
+            document.getElementById('profile-pan').value = profile.pan || '';
+            
+            // Set category chips active selection
+            selectedCategory = profile.category || '';
+            document.getElementById('profile-category').value = selectedCategory;
+            
+            const chipWrapper = document.getElementById('category-chips-wrapper');
+            chipWrapper.querySelectorAll('.chip').forEach(chip => {
+                if (chip.getAttribute('data-category') === selectedCategory) {
+                    chip.classList.add('active');
+                } else {
+                    chip.classList.remove('active');
+                }
+            });
+            
+            // Retrieve passphrase from session storage to fill the password box temporarily
+            const localPass = sessionStorage.getItem('zk_passphrase');
+            if (localPass) {
+                document.getElementById('profile-passphrase').value = localPass;
+            }
         }
     } catch (err) {
-        console.error("Load user profile error:", err);
+        console.error("Failed to load user profile:", err);
     }
 }
 
-async function saveDefaultProfile(token) {
-    const defaultProfile = {
-        full_name: "Amit Kumar",
-        dob: "1998-05-15",
-        gender: "Male",
-        category: "GEN",
-        state: "Bihar",
-        qualification: "Graduate",
-        phone: "9999999999",
-        aadhaar: "987654321098",
-        email: "amit14916@gmail.com"
+async function handleProfileSubmit(event) {
+    event.preventDefault();
+    const passphrase = document.getElementById('profile-passphrase').value;
+    sessionStorage.setItem('zk_passphrase', passphrase); // Save passphrase to memory
+    
+    const payload = {
+        full_name: document.getElementById('profile-full-name').value.trim(),
+        dob: document.getElementById('profile-dob').value,
+        gender: document.getElementById('profile-gender').value,
+        category: document.getElementById('profile-category').value,
+        state: document.getElementById('profile-state').value.trim(),
+        district: document.getElementById('profile-district').value.trim(),
+        qualification: document.getElementById('profile-qualification').value,
+        phone: document.getElementById('profile-phone').value.trim(),
+        email: document.getElementById('profile-email').value.trim(),
+        aadhaar: document.getElementById('profile-aadhaar').value.trim(),
+        pan: document.getElementById('profile-pan').value.trim() || null
     };
     
     try {
-        await fetch('/profile', {
+        const response = await fetch('/profile', {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${authToken}`
             },
-            body: JSON.stringify(defaultProfile)
+            body: JSON.stringify(payload)
         });
         
-        await uploadMockDocuments(token);
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.detail || "Profile update failed");
+        }
+        
+        showToast("Profile vault encrypted and saved successfully!");
+        loadProfile();
     } catch (err) {
-        console.error("Save default profile failed", err);
+        showToast(err.message, 'error');
     }
 }
 
-async function uploadMockDocuments(token) {
-    const docTypes = ["photo", "signature", "aadhaar"];
-    for (const type of docTypes) {
-        try {
-            const fileContent = "MOCK FILE DATA CONTENT";
-            const blob = new Blob([fileContent], { type: "image/jpeg" });
-            const formData = new FormData();
-            formData.append("doc_type", type);
-            formData.append("file", blob, `${type}.jpg`);
+// 5. DOCUMENTS CONTROLLER & MULTIPART UPLOADS
+async function loadDocuments() {
+    try {
+        const response = await fetch('/profile/documents', {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        if (!response.ok) throw new Error("Could not load documents list");
+        
+        const docs = await response.json();
+        
+        // Reset slot indicators
+        const slots = ['photo', 'signature', 'aadhaar', 'caste_cert', 'marksheet', 'degree'];
+        slots.forEach(slot => {
+            const badge = document.getElementById(`badge-${slot}`);
+            if (badge) {
+                badge.className = "doc-badge pending";
+                badge.innerText = "Missing";
+            }
+            const link = document.getElementById(`view-${slot}`);
+            if (link) {
+                link.innerHTML = "";
+            }
+        });
+        
+        // Update loaded uploads
+        docs.forEach(doc => {
+            let uiSlot = doc.doc_type;
             
-            await fetch('/profile/documents', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                body: formData
-            });
-        } catch (err) {
-            console.error(`Mock upload failed for doc_type ${type}`, err);
+            // Map file types to UI display slots
+            const badge = document.getElementById(`badge-${uiSlot}`);
+            if (badge) {
+                badge.className = "doc-badge uploaded";
+                badge.innerText = "Uploaded";
+            }
+            
+            const link = document.getElementById(`view-${uiSlot}`);
+            if (link) {
+                // Ensure file paths are relative to base host context
+                const cleanPath = doc.file_path.startsWith('/') ? doc.file_path : `/${doc.file_path}`;
+                link.innerHTML = `<a href="${cleanPath}" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open File</a>`;
+            }
+        });
+    } catch (err) {
+        console.error("Failed to list uploaded documents:", err);
+    }
+}
+
+async function triggerDirectUpload(inputElement) {
+    const docType = inputElement.id.split('-')[1]; // e.g., photo
+    await uploadDocumentFile(inputElement.files[0], docType);
+}
+
+async function triggerDirectUploadMapped(inputElement, backendType, uiLabel) {
+    // Allows degree slots to act as marksheet uploads
+    await uploadDocumentFile(inputElement.files[0], backendType, uiLabel);
+}
+
+async function uploadDocumentFile(file, docType, uiLabel = null) {
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append("doc_type", docType);
+    formData.append("file", file);
+    
+    showToast(`Uploading ${uiLabel || docType}...`, 'success');
+    
+    try {
+        const response = await fetch('/profile/documents', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${authToken}` },
+            body: formData
+        });
+        
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || "Document upload failed");
+        
+        showToast("File uploaded successfully!");
+        loadDocuments();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+function parseDate(val) {
+  if (!val) return null;
+  const s = String(val).replace(/\//g, '-').trim();
+  const d = new Date(s + 'T00:00:00');
+  return isNaN(d) ? null : d;
+}
+
+function getDaysLeft(dateStr) {
+  const d = parseDate(dateStr);
+  if (!d) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.ceil((d - today) / (1000 * 60 * 60 * 24));
+}
+
+function formatDate(dateStr) {
+  const d = parseDate(dateStr);
+  if (!d) return 'TBA';
+  return d.toLocaleDateString('en-IN', {
+    day: 'numeric', month: 'short', year: 'numeric'
+  });
+}
+
+// 6. DASHBOARD & ELIGIBILITY LOADER
+async function loadDashboard() {
+    try {
+        // Fetch Stats
+        const statsResponse = await fetch('/dashboard/stats', {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (statsResponse.ok) {
+            const stats = await statsResponse.json();
+            document.getElementById('stat-eligible-count').innerText = stats.eligible_count !== undefined ? stats.eligible_count : (stats.eligible_exams_count || 0);
+            document.getElementById('stat-applied-count').innerText = stats.applied_count !== undefined ? stats.applied_count : (stats.total_applications || 0);
+            document.getElementById('stat-free-count').innerText = stats.free_count !== undefined ? stats.free_count : 0;
         }
+        
+        // Fetch Eligible Exams
+        const container = document.getElementById('exams-list-container');
+        container.innerHTML = `
+            <div class="list-empty">
+                <i class="fa-solid fa-circle-notch fa-spin"></i>
+                <p>Checking your profile parameters...</p>
+            </div>
+        `;
+        
+        const examsResponse = await fetch('/eligibility/check', {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        if (!examsResponse.ok) {
+            if (examsResponse.status === 400) {
+                container.innerHTML = `
+                    <div class="list-empty">
+                        <i class="fa-solid fa-user-gear"></i>
+                        <p>Please complete your profile details to view eligible government examinations.</p>
+                        <button class="btn btn-primary btn-sm" onclick="switchPanel('panel-profile')" style="margin-top: 10px;">
+                            <i class="fa-solid fa-id-card"></i> Fill Profile Vault
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            const errData = await examsResponse.json();
+            throw new Error(errData.detail || "Failed to parse eligibility checklist");
+        }
+        
+        const eligibleExams = await examsResponse.json();
+        
+        // Console log full exam objects as requested
+        eligibleExams.forEach(exam => {
+            console.log("Full exam object:", exam);
+        });
+
+        const today = new Date(); today.setHours(0,0,0,0);
+        const validExams = eligibleExams.filter(e => {
+          const d = parseDate(e.last_date);
+          return d && d >= today;
+        });
+
+        if (validExams.length === 0) {
+            container.innerHTML = `
+                <div class="list-empty">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <p>No examinations currently match your eligibility parameters. Double check qualifications or domicile state in your profile.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Build cards
+        container.innerHTML = validExams.map(exam => {
+            const isFree = exam.fee === 0;
+            const feeDisplay = isFree 
+                ? '<span class="fee-waiver-badge"><i class="fa-solid fa-tag"></i> FREE</span>' 
+                : `<span class="fee-charged">₹${exam.fee} Exam Fee</span>`;
+            
+            // Calculate days left dynamically
+            const daysLeft = getDaysLeft(exam.last_date);
+            
+            let badgeBg = '#22c55e'; // green
+            let badgeText = daysLeft !== null ? `${daysLeft} days left` : 'TBA';
+            if (daysLeft !== null) {
+                if (daysLeft <= 0) {
+                    badgeBg = '#ef4444'; // red
+                    badgeText = 'CLOSED';
+                } else if (daysLeft <= 7) {
+                    badgeBg = '#ef4444'; // red
+                } else if (daysLeft <= 15) {
+                    badgeBg = '#eab308'; // yellow
+                }
+            }
+
+            const formattedDeadline = formatDate(exam.last_date);
+            
+            const dateDisplay = `
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <span style="font-size: 0.9rem; font-weight: 500;">${formattedDeadline}</span>
+                    <span class="days-left-badge" style="background-color: ${badgeBg}; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; width: fit-content; text-transform: uppercase; display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="fa-regular fa-clock" style="font-size: 0.65rem;"></i> ${badgeText}
+                    </span>
+                </div>
+            `;
+
+            const applyButton = (daysLeft !== null && daysLeft <= 0)
+                ? ''
+                : `<button class="btn btn-primary" onclick="triggerAutoApply('${exam.exam_name}', '${exam.portal_url}')">
+                       <i class="fa-solid fa-bolt"></i> Auto Apply
+                   </button>`;
+            
+            return `
+                <div class="exam-card">
+                    <div class="exam-card-header">
+                        <span class="conducting-body">${exam.conducting_body}</span>
+                        <h4 class="exam-name">${exam.exam_name}</h4>
+                    </div>
+                    
+                    <div class="exam-card-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">Fee Amount</span>
+                            <span class="meta-value">${feeDisplay}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Last Date</span>
+                            <span class="meta-value">${dateDisplay}</span>
+                        </div>
+                    </div>
+                    
+                    ${applyButton}
+                </div>
+            `;
+        }).join('');
+        
+    } catch (err) {
+        console.error("Dashboard load failed:", err);
+    }
+}
+
+// 7. AUTO-APPLY MODAL & SSE REAL-TIME TRACKING
+function triggerAutoApply(examId, portalUrl) {
+    activePortalUrl = portalUrl || "https://upsconline.nic.in";
+    let passphrase = sessionStorage.getItem('zk_passphrase');
+    if (!passphrase) {
+        passphrase = prompt("Your profile details vault is encrypted. Input your local cryptographic passphrase to release credentials to application worker:");
+        if (!passphrase) {
+            showToast("Application cancelled: decryption passphrase required to autofill form.", "error");
+            return;
+        }
+        sessionStorage.setItem('zk_passphrase', passphrase);
+    }
+    
+    // Show modal overlay
+    document.getElementById('apply-monitor-modal').classList.add('active');
+    document.getElementById('monitor-exam-title').innerText = `${examId} Auto Apply pipeline`;
+    
+    resetApplyMonitor();
+    appendLogLine("[System] Submitting apply instruction to CEO Orchestrator...", "system");
+    
+    // Call POST /apply/{exam_id}
+    startApplyTask(examId, passphrase);
+}
+
+function resetApplyMonitor() {
+    // Reset steps rows
+    document.querySelectorAll('.pipeline-steps-list .step-row').forEach(row => {
+        row.className = "step-row";
+    });
+    
+    // Reset consensus meter
+    document.getElementById('monitor-consensus-fill').style.width = "0%";
+    document.getElementById('monitor-qa-verdict').innerText = "Starting task...";
+    document.getElementById('monitor-qa-verdict').style.color = "var(--text-secondary)";
+    
+    // Reset emulator viewport
+    document.getElementById('monitor-emulator-url').innerText = "about:blank";
+    document.getElementById('monitor-emulator-viewport').innerHTML = `
+        <div class="emulator-inactive" id="emulator-status-box">
+            <i class="fa-solid fa-circle-notch fa-spin"></i>
+            <p>Spawning headless browser environment...</p>
+        </div>
+    `;
+    
+    // Clear terminal logs
+    document.getElementById('monitor-terminal-logs').innerHTML = "";
+}
+
+function appendLogLine(message, styleClass = '') {
+    const terminal = document.getElementById('monitor-terminal-logs');
+    if (!terminal) return;
+    
+    const line = document.createElement('div');
+    line.className = `terminal-line ${styleClass}`;
+    
+    const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+    line.innerText = `[${time}] ${message}`;
+    
+    terminal.appendChild(line);
+    terminal.scrollTop = terminal.scrollHeight;
+}
+
+async function startApplyTask(examId, passphrase) {
+    try {
+        const response = await fetch(`/apply/${encodeURIComponent(examId)}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ passphrase: passphrase })
+        });
+        
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.detail || "CEO Orchestrator rejected application schedule request");
+        }
+        
+        activeTaskId = data.task_id;
+        appendLogLine(`[Scheduled] Swarm pipeline active. Task ID: ${activeTaskId}`, 'success');
+        
+        // Spawn SSE progress event stream listener
+        connectProgressSSE(activeTaskId);
+    } catch (err) {
+        appendLogLine(`[Error] Orchestration startup rejected: ${err.message}`, 'error');
+        document.getElementById('emulator-status-box').innerHTML = `
+            <i class="fa-solid fa-circle-xmark" style="color:var(--danger);"></i>
+            <p style="color:var(--danger); font-weight:bold; margin-top:8px;">Failed to start: ${err.message}</p>
+        `;
+    }
+}
+
+function connectProgressSSE(taskId) {
+    if (activeEventSource) {
+        activeEventSource.close();
+    }
+    
+    // Establish connection to GET /apply/status/{task_id} SSE
+    activeEventSource = new EventSource(`/apply/status/${taskId}`);
+    
+    activeEventSource.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            handleProgressEvent(data);
+        } catch (err) {
+            console.error("Failed to parse SSE streaming packet:", err);
+        }
+    };
+    
+    activeEventSource.onerror = (err) => {
+        console.warn("SSE stream closed or disconnected:", err);
+        activeEventSource.close();
+        activeEventSource = null;
+        appendLogLine("[System] Event stream connection closed.", "system");
+    };
+}
+
+function handleProgressEvent(data) {
+    const status = data.status;
+    const message = data.message;
+    
+    let style = '';
+    if (status === 'failed') style = 'error';
+    else if (status === 'submitted') style = 'success';
+    else if (status === 'payment_pending') style = 'warning';
+    
+    appendLogLine(`[${status.toUpperCase()}] ${message}`, style);
+    
+    // Update stepper visual indicators
+    updateStepUI(status);
+    
+    // Specific handlers based on execution progress code
+    if (status === 'payment_pending' && data.phonepay_url) {
+        document.getElementById('monitor-emulator-url').innerText = "https://merchantsandbox.phonepe.com/pg";
+        document.getElementById('monitor-emulator-viewport').innerHTML = `
+            <div class="emulator-inactive" style="color:var(--warning); padding:20px;">
+                <i class="fa-solid fa-credit-card" style="font-size:2rem; margin-bottom:12px;"></i>
+                <p style="font-weight:bold; font-size:1.05rem; margin-bottom:12px;">PhonePe Payment Verification Needed</p>
+                <a href="${data.phonepay_url}" target="_blank" class="btn btn-primary btn-sm">
+                    <i class="fa-solid fa-external-link"></i> Complete Payment
+                </a>
+            </div>
+        `;
+    } else if (status === 'submitted') {
+        const confNumber = data.confirmation_number || "CONF-SUCCESS";
+        document.getElementById('monitor-emulator-viewport').innerHTML = `
+            <div class="emulator-inactive" style="color:var(--success); padding:20px;">
+                <i class="fa-solid fa-circle-check" style="font-size:2.4rem; margin-bottom:12px;"></i>
+                <p style="font-weight:bold; font-size:1.15rem; margin-bottom:4px;">Application Submitted Successfully!</p>
+                <p style="font-size:0.75rem; opacity:0.8;">Confirmation Reference: <strong>${confNumber}</strong></p>
+            </div>
+        `;
+        if (activeEventSource) {
+            activeEventSource.close();
+        }
+    } else if (status === 'failed') {
+        document.getElementById('monitor-emulator-viewport').innerHTML = `
+            <div class="emulator-inactive" style="color:var(--danger); padding:20px;">
+                <i class="fa-solid fa-triangle-exclamation" style="font-size:2.4rem; margin-bottom:12px;"></i>
+                <p style="font-weight:bold; font-size:1.15rem; margin-bottom:4px;">Submission Execution Failed</p>
+                <p style="font-size:0.75rem; opacity:0.8;">${message}</p>
+            </div>
+        `;
+        if (activeEventSource) {
+            activeEventSource.close();
+        }
+    } else {
+        // Map progressive status keys to portal pages to simulate web browsing using activePortalUrl
+        const domain = activePortalUrl || "https://upsconline.nic.in";
+        const baseDomain = domain.endsWith('/') ? domain.slice(0, -1) : domain;
+        const urlMap = {
+            initializing: "about:blank",
+            creating_account: `${baseDomain}/otr/registration`,
+            filling_profile: `${baseDomain}/otr/profile`,
+            uploading_documents: `${baseDomain}/otr/documents`,
+            processing_payment: `${baseDomain}/otr/payment`
+        };
+        if (urlMap[status]) {
+            document.getElementById('monitor-emulator-url').innerText = urlMap[status];
+            document.getElementById('monitor-emulator-viewport').innerHTML = `
+                <div class="emulator-inactive" style="color:var(--accent);">
+                    <i class="fa-solid fa-spinner fa-spin" style="font-size:2rem; margin-bottom:12px;"></i>
+                    <p style="font-weight:500;">Stealth browser filling: <strong>${status.replace('_', ' ')}</strong></p>
+                </div>
+            `;
+        }
+    }
+}
+
+function updateStepUI(status) {
+    const steps = ['initializing', 'creating_account', 'filling_profile', 'uploading_documents', 'processing_payment'];
+    let currentIndex = steps.indexOf(status);
+    
+    if (status === 'submitted') currentIndex = 5;
+    if (status === 'payment_pending') currentIndex = 4;
+    
+    // Update step rows classes
+    steps.forEach((step, idx) => {
+        const row = document.getElementById(`step-${step}`);
+        if (!row) return;
+        
+        row.className = "step-row";
+        
+        if (status === 'failed' && idx === currentIndex) {
+            row.classList.add('failed');
+        } else if (idx < currentIndex || status === 'submitted') {
+            row.classList.add('completed');
+        } else if (idx === currentIndex) {
+            row.classList.add('active');
+        }
+    });
+    
+    // Update progress consensus score fills
+    const progressFill = document.getElementById('monitor-consensus-fill');
+    const verdict = document.getElementById('monitor-qa-verdict');
+    
+    if (currentIndex >= 0) {
+        const fillPercent = Math.min(100, (currentIndex + 1) * 20);
+        progressFill.style.width = `${fillPercent}%`;
+        
+        if (status === 'failed') {
+            verdict.innerText = "Audit Failure";
+            verdict.style.color = "var(--danger)";
+        } else if (status === 'submitted') {
+            verdict.innerText = "Audit Passed";
+            verdict.style.color = "var(--success)";
+        } else {
+            verdict.innerText = "Scanning page elements...";
+            verdict.style.color = "var(--warning)";
+        }
+    }
+}
+
+function closeApplyMonitor() {
+    document.getElementById('apply-monitor-modal').classList.remove('active');
+    if (activeEventSource) {
+        activeEventSource.close();
+        activeEventSource = null;
+    }
+    loadDashboard();
+}
+
+// 8. APPLIED HISTORY CONTROLLER
+async function loadApplied() {
+    const tbody = document.getElementById('applied-table-body');
+    tbody.innerHTML = `<tr><td colspan="5" class="table-empty">Loading applications list...</td></tr>`;
+    
+    try {
+        const response = await fetch('/exams/applications', {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        if (!response.ok) throw new Error("Could not fetch submitted applications history list");
+        
+        const apps = await response.json();
+        if (apps.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="table-empty">No active applications created yet.</td></tr>`;
+            return;
+        }
+        
+        tbody.innerHTML = apps.map(app => {
+            const cleanDate = new Date(app.applied_at).toLocaleString('en-IN', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+            
+            return `
+                <tr>
+                    <td><strong>#${app.id}</strong></td>
+                    <td>${app.exam_name}</td>
+                    <td><a href="${app.portal_url}" target="_blank" style="color:var(--accent); text-decoration:none;"><i class="fa-solid fa-up-right-from-square"></i> Visit Site</a></td>
+                    <td>${cleanDate}</td>
+                    <td><span class="status-badge ${app.status}">${app.status}</span></td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" class="table-empty" style="color:var(--danger);">Error: ${err.message}</td></tr>`;
     }
 }

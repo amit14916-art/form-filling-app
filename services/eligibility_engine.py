@@ -31,15 +31,6 @@ class EligibilityEngine:
         today = date.today()
         age = today.year - profile.dob.year - ((today.month, today.day) < (profile.dob.month, profile.dob.day))
 
-        # Qualification levels hierarchy
-        QUAL_LEVELS = {
-            "10th": 1,
-            "12th": 2,
-            "Graduate": 3,
-            "Post Graduate": 4
-        }
-        user_qual_level = QUAL_LEVELS.get(profile.qualification, 3)
-
         eligible_exams = []
 
         def evaluate_exam(exam: Dict[str, Any], exam_category: str, state_name: Optional[str] = None) -> Dict[str, Any]:
@@ -59,15 +50,13 @@ class EligibilityEngine:
                         reasons.append("Requires residency in Jammu & Kashmir UT.")
 
             # 2. Age limit Check
-            # Base ranges for govt exams: 18 to 32.
-            # Relaxations: OBC +3 years (35), SC/ST +5 years (37).
-            min_age = 18
-            max_age = 32
+            min_age = exam.get("age_min", 18)
+            max_age = exam.get("age_max", 32)
             user_category = profile.category.upper()
-            if user_category == "OBC":
-                max_age = 35
-            elif user_category in ("SC", "ST"):
-                max_age = 37
+            
+            # Apply category relaxation if defined in exam's relaxations
+            relaxation = exam.get("relaxations", {}).get(user_category, 0)
+            max_age += relaxation
 
             if age < min_age:
                 reasons.append(f"Age restriction: User age is {age}, minimum required is {min_age}.")
@@ -75,17 +64,23 @@ class EligibilityEngine:
                 reasons.append(f"Age restriction: User age is {age}, maximum allowed for {user_category} is {max_age}.")
 
             # 3. Qualification Match
-            required_level = 1  # base secondary school / matric
-            if "post graduate" in exam_name_lower or "post graduate" in guidelines_lower or "master" in exam_name_lower:
-                required_level = 4
-            elif "graduate" in exam_name_lower or "graduate" in guidelines_lower or "degree" in exam_name_lower or "bachelor" in exam_name_lower:
-                required_level = 3
-            elif "inter" in exam_name_lower or "12th" in exam_name_lower or "12th" in guidelines_lower or "higher secondary" in exam_name_lower:
-                required_level = 2
+            def get_qualification_rank(qual_str: str) -> int:
+                q = qual_str.strip().lower()
+                if "post" in q:
+                    return 4
+                elif "grad" in q or "btech" in q or "b.tech" in q or "degree" in q:
+                    return 3
+                elif "12th" in q or "diploma" in q or "iti" in q or "inter" in q:
+                    return 2
+                elif "10th" in q or "matric" in q or "secondary" in q or "pass" in q:
+                    return 1
+                return 1
 
-            if user_qual_level < required_level:
-                req_qual_str = next((k for k, v in QUAL_LEVELS.items() if v == required_level), "Higher qualification")
-                reasons.append(f"Qualification mismatch: User is '{profile.qualification}', requires '{req_qual_str}'.")
+            user_qual_level = get_qualification_rank(profile.qualification)
+            exam_qual_level = get_qualification_rank(exam.get("qualification", "Graduate"))
+
+            if user_qual_level < exam_qual_level:
+                reasons.append(f"Qualification mismatch: User is '{profile.qualification}', requires '{exam.get('qualification')}'.")
 
             # 4. Required Documents Match
             missing_docs = []
@@ -100,22 +95,16 @@ class EligibilityEngine:
             if "marksheet" in guidelines_lower and "marksheet" not in uploaded_doc_types:
                 missing_docs.append("marksheet")
 
-            # Note: We do not add missing documents to reasons list so that the candidate
-            # is still marked as eligible to apply (allowing them to upload documents later).
-            pass
+            # Fee lookup
+            fees_dict = exam.get("fees", {})
+            fee = fees_dict.get(user_category)
+            if fee is None:
+                fee = fees_dict.get("GEN", 0)
 
-            # Fee and fee waiver logic
+            # Category fee waiver logic
             is_woman = profile.gender.strip().lower() in ("female", "woman", "women")
             is_sc_st = user_category in ("SC", "ST")
-            category_fee_waiver = is_woman or is_sc_st
-
-            fee = 500
-            if "upsc" in exam_name_lower or "ssc" in exam_name_lower:
-                fee = 100
-            elif "ibps" in exam_name_lower:
-                fee = 850
-            elif "jee" in exam_name_lower or "neet" in exam_name_lower:
-                fee = 1000
+            category_fee_waiver = (fee == 0) or is_woman or is_sc_st
 
             eligible = (len(reasons) == 0)
 
@@ -127,7 +116,8 @@ class EligibilityEngine:
                 "reasons": reasons,
                 "fee": fee,
                 "category_fee_waiver": category_fee_waiver,
-                "missing_documents": missing_docs
+                "missing_documents": missing_docs,
+                "last_date": exam.get("last_date")
             }
 
         # Central exams

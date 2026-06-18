@@ -120,18 +120,22 @@ class ApplyService:
                 
                 await publish_progress("submitted", f"Form submitted successfully!", {"confirmation_number": conf_num})
             else:
-                wallet_balance = await WalletService.get_balance(user_data["id"], db)
-                if wallet_balance >= fee:
-                    await publish_progress("processing_payment", "Processing payment...")
-                    debit_ok = await WalletService.debit(
-                        user_data["id"], 
-                        Decimal(str(fee)), 
-                        f"Exam Fee Payment for {exam_data['exam_name']}", 
-                        db
+                wallet_res = await db.execute(select(Wallet).filter(Wallet.user_id == user_data["id"]))
+                wallet = wallet_res.scalars().first()
+                already_paid = False
+                if wallet:
+                    tx_check = await db.execute(
+                        select(WalletTransaction)
+                        .filter(
+                            WalletTransaction.wallet_id == wallet.id,
+                            WalletTransaction.type == "debit",
+                            WalletTransaction.description == f"Exam Fee Payment for {exam_data['exam_name']}"
+                        )
                     )
-                    if not debit_ok:
-                        raise Exception("Wallet debit failed.")
-                    
+                    already_paid = (tx_check.scalars().first() is not None)
+
+                if already_paid:
+                    await publish_progress("processing_payment", "Processing payment...")
                     await strategy.handle_payment(page, {"fee_waiver": False})
                     
                     conf_num = f"CONF-{random.randint(100000, 999999)}"
@@ -140,35 +144,53 @@ class ApplyService:
                     
                     await publish_progress("submitted", f"Form submitted successfully!", {"confirmation_number": conf_num})
                 else:
-                    await publish_progress("processing_payment", "Processing payment...")
-                    phonepe = PhonePayService()
-                    phonepay_url, txn_id = phonepe.create_payment_link(
-                        user_data["id"],
-                        Decimal(str(fee)),
-                        exam_data["exam_name"],
-                        app_record.id
-                    )
-                    
-                    # Create pending transaction
-                    wallet_res = await db.execute(select(Wallet).filter(Wallet.user_id == user_data["id"]))
-                    wallet = wallet_res.scalars().first()
-                    if not wallet:
-                        wallet = Wallet(user_id=user_data["id"], balance=Decimal("0.00"), currency="INR")
-                        db.add(wallet)
-                        await db.flush()
+                    wallet_balance = await WalletService.get_balance(user_data["id"], db)
+                    if wallet_balance >= fee:
+                        await publish_progress("processing_payment", "Processing payment...")
+                        debit_ok = await WalletService.debit(
+                            user_data["id"], 
+                            Decimal(str(fee)), 
+                            f"Exam Fee Payment for {exam_data['exam_name']}", 
+                            db
+                        )
+                        if not debit_ok:
+                            raise Exception("Wallet debit failed.")
                         
-                    pending_tx = WalletTransaction(
-                        wallet_id=wallet.id,
-                        amount=Decimal(str(fee)),
-                        type="debit",
-                        description=f"PhonePe pending: txn={txn_id}, app={app_record.id}, task={task_id}"
-                    )
-                    db.add(pending_tx)
-                    
-                    app_record.status = "payment_pending"
-                    await db.commit()
-                    
-                    await publish_progress("payment_pending", "Redirecting to PhonePe...", {"phonepay_url": phonepay_url})
+                        await strategy.handle_payment(page, {"fee_waiver": False})
+                        
+                        conf_num = f"CONF-{random.randint(100000, 999999)}"
+                        app_record.status = "submitted"
+                        await db.commit()
+                        
+                        await publish_progress("submitted", f"Form submitted successfully!", {"confirmation_number": conf_num})
+                    else:
+                        await publish_progress("processing_payment", "Processing payment...")
+                        phonepe = PhonePayService()
+                        phonepay_url, txn_id = phonepe.create_payment_link(
+                            user_data["id"],
+                            Decimal(str(fee)),
+                            exam_data["exam_name"],
+                            app_record.id
+                        )
+                        
+                        # Create pending transaction
+                        if not wallet:
+                            wallet = Wallet(user_id=user_data["id"], balance=Decimal("0.00"), currency="INR")
+                            db.add(wallet)
+                            await db.flush()
+                            
+                        pending_tx = WalletTransaction(
+                            wallet_id=wallet.id,
+                            amount=Decimal(str(fee)),
+                            type="debit",
+                            description=f"PhonePe pending: txn={txn_id}, app={app_record.id}, task={task_id}"
+                        )
+                        db.add(pending_tx)
+                        
+                        app_record.status = "payment_pending"
+                        await db.commit()
+                        
+                        await publish_progress("payment_pending", "Redirecting to PhonePe...", {"phonepay_url": phonepay_url})
                     
         except Exception as e:
             logger.error(f"Error executing form fill pipeline: {e}")

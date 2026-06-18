@@ -33,6 +33,8 @@ class UserProfile(Base):
     phone = Column(String, nullable=True)
     aadhaar_encrypted = Column(String, nullable=True)
     email = Column(String, nullable=True)
+    pan = Column(String, nullable=True)
+    district = Column(String, nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="profile")

@@ -39,6 +39,9 @@ class DashboardStatsResponse(BaseModel):
     eligible_exams_count: int
     recent_applications: List[ApplicationSummary]
     recent_transactions: List[TransactionResponse]
+    eligible_count: int
+    applied_count: int
+    free_count: int
 
 @router.get("/stats", response_model=DashboardStatsResponse)
 async def get_dashboard_stats(
@@ -86,6 +89,7 @@ async def get_dashboard_stats(
     # 4. Fetch eligibility report
     eligibility_report = await EligibilityEngine.check_user_eligibility(current_user.id, db)
     eligible_count = sum(1 for e in eligibility_report if e["eligible"])
+    free_count = sum(1 for e in eligibility_report if e["eligible"] and (e.get("fee") == 0 or e.get("category_fee_waiver") is True))
 
     # 5. Fetch recent transactions
     result_tx = await db.execute(
@@ -114,7 +118,10 @@ async def get_dashboard_stats(
         documents_uploaded_count=docs_count,
         eligible_exams_count=eligible_count,
         recent_applications=recent_apps_res,
-        recent_transactions=recent_tx_res
+        recent_transactions=recent_tx_res,
+        eligible_count=eligible_count,
+        applied_count=total_apps,
+        free_count=free_count
     )
 
 @router.post("/wallet/deposit", response_model=dict)
