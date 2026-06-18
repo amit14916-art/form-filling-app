@@ -7,13 +7,25 @@ from playwright.async_api import async_playwright, Page
 from swarm_core.agent_registry import AgentResult, ConsensusEngine
 
 logger = logging.getLogger("BrowserWorker")
-
 class StealthBrowserWorker:
     """
     Asynchronous Playwright Browser Worker that initializes unban-optimized Chromium sessions,
     performs human-like typing actions, and supports QA consensus checks before form submission.
     """
     def __init__(self, proxy_config: Optional[Dict[str, Any]] = None):
+        if not proxy_config:
+            import os
+            proxy_server = os.getenv("PROXY_SERVER")
+            if proxy_server and proxy_server != "http://your-proxy-server:port":
+                proxy_config = {
+                    "server": proxy_server
+                }
+                proxy_user = os.getenv("PROXY_USERNAME")
+                proxy_pass = os.getenv("PROXY_PASSWORD")
+                if proxy_user and proxy_user != "your-username":
+                    proxy_config["username"] = proxy_user
+                if proxy_pass and proxy_pass != "your-password":
+                    proxy_config["password"] = proxy_pass
         self.proxy_config = proxy_config
         self.playwright = None
         self.browser = None
@@ -157,13 +169,21 @@ class StealthBrowserWorker:
                 screenshot_bytes = await element.screenshot(type="png")
                 logger.info("[StealthBrowserWorker] Captured captcha element screenshot bytes successfully.")
 
-            # Production Placeholder Solver API Hook
-            # In production, route to 2Captcha / Anti-Captcha / Custom API:
-            # solver_token = await call_external_solver(img_src, screenshot_bytes)
-            # return solver_token
+            # Production Solver API Hook
+            import os
+            api_key = os.getenv("CAPTCHA_API_KEY")
+            if api_key and api_key != "your-2captcha-api-key-here" and api_key.strip():
+                try:
+                    from tools.captcha_solver import solve_image_captcha
+                    if screenshot_bytes:
+                        solved_text = await solve_image_captcha(api_key, screenshot_bytes)
+                        logger.info(f"[StealthBrowserWorker] Captcha solved dynamically via 2Captcha: {solved_text}")
+                        return solved_text
+                except Exception as err:
+                    logger.error(f"[StealthBrowserWorker] Dynamic captcha solver failed: {err}. Falling back to mock token.")
 
             mock_solved_token = "SOLVED_CAPTCHA_MOCK_TOKEN_" + str(random.randint(1000, 9999))
-            logger.info(f"[StealthBrowserWorker] Captcha solved via production placeholder. Returned Token: {mock_solved_token}")
+            logger.info(f"[StealthBrowserWorker] Captcha solved via fallback. Returned Token: {mock_solved_token}")
             return mock_solved_token
 
         except Exception as e:

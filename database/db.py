@@ -1,7 +1,11 @@
 import os
 import logging
+from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import declarative_base
+
+# Load environment variables
+load_dotenv()
 
 logger = logging.getLogger("Database")
 

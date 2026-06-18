@@ -18,6 +18,11 @@ class ApplyService:
     @staticmethod
     async def run_application(task_id: str, user_data: dict, exam_data: dict, db: AsyncSession):
         from main import orchestrator
+        if not orchestrator.broker.redis and not orchestrator.broker.use_fallback:
+            try:
+                await orchestrator.broker.connect()
+            except Exception as e:
+                logger.warning(f"Could not connect event broker to Redis: {e}")
         broker = orchestrator.broker
         channel = f"task_events:{task_id}"
         

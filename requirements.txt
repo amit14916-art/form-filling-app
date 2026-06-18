@@ -10,3 +10,5 @@ asyncpg>=0.29.0
 bcrypt>=4.1.0
 pyjwt>=2.8.0
 python-multipart>=0.0.9
+celery>=5.3.0
+python-dotenv>=1.0.0
