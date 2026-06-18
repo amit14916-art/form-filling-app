@@ -177,6 +177,8 @@ function switchPanel(panelId) {
         loadDocuments();
     } else if (panelId === 'panel-applied') {
         loadApplied();
+    } else if (panelId === 'panel-wallet') {
+        loadWallet();
     }
 }
 
@@ -522,6 +524,94 @@ async function loadDashboard() {
         
     } catch (err) {
         console.error("Dashboard load failed:", err);
+    }
+}
+
+// 6b. WALLET CONTROLLER & DEPOSITS
+async function loadWallet() {
+    const balanceDisplay = document.getElementById('wallet-balance-display');
+    const tbody = document.getElementById('wallet-table-body');
+    
+    tbody.innerHTML = `<tr><td colspan="5" class="table-empty">Loading transactions ledger...</td></tr>`;
+    
+    try {
+        const statsResponse = await fetch('/dashboard/stats', {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        if (statsResponse.ok) {
+            const stats = await statsResponse.json();
+            
+            // Set balance display
+            if (balanceDisplay) {
+                balanceDisplay.innerText = `₹${parseFloat(stats.wallet_balance).toFixed(2)}`;
+            }
+            
+            // Populate ledger
+            const txs = stats.recent_transactions || [];
+            if (txs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="table-empty">No transactions recorded yet.</td></tr>`;
+                return;
+            }
+            
+            tbody.innerHTML = txs.map(t => {
+                const cleanDate = new Date(t.created_at).toLocaleString('en-IN', {
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
+                
+                const typeClass = t.type === 'credit' ? 'uploaded' : 'pending';
+                const sign = t.type === 'credit' ? '+' : '-';
+                const amtDisplay = `<span style="font-weight: 700; color: ${t.type === 'credit' ? 'var(--success)' : 'var(--danger)'};">${sign} ₹${parseFloat(t.amount).toFixed(2)}</span>`;
+                
+                return `
+                    <tr>
+                        <td><strong>#TXN-${t.id}</strong></td>
+                        <td><span class="doc-badge ${typeClass}" style="position: static; display: inline-block;">${t.type}</span></td>
+                        <td>${amtDisplay}</td>
+                        <td>${t.description || ''}</td>
+                        <td>${cleanDate}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    } catch (err) {
+        console.error("Wallet load failed:", err);
+        tbody.innerHTML = `<tr><td colspan="5" class="table-empty" style="color: var(--danger);">Error: ${err.message}</td></tr>`;
+    }
+}
+
+async function handleWalletDepositSubmit(event) {
+    event.preventDefault();
+    const amountVal = document.getElementById('deposit-amount').value.trim();
+    if (!amountVal || parseFloat(amountVal) <= 0) {
+        showToast("Please enter a valid deposit amount.", "error");
+        return;
+    }
+    
+    try {
+        const response = await fetch('/dashboard/wallet/deposit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({
+                amount: parseFloat(amountVal),
+                description: "User Deposit via Portal"
+            })
+        });
+        
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.detail || "Wallet deposit failed");
+        }
+        
+        showToast(`Successfully deposited ₹${parseFloat(amountVal).toFixed(2)} to wallet!`);
+        document.getElementById('deposit-amount').value = '';
+        loadWallet();
+    } catch (err) {
+        showToast(err.message, 'error');
     }
 }
 

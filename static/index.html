@@ -90,6 +90,12 @@
                 <button onclick="switchPanel('panel-applied')" id="nav-panel-applied" class="menu-item">
                     <i class="fa-solid fa-list-check"></i> <span>Applied Forms</span>
                 </button>
+                <button onclick="switchPanel('panel-wallet')" id="nav-panel-wallet" class="menu-item">
+                    <i class="fa-solid fa-wallet"></i> <span>My Wallet</span>
+                </button>
+                <button onclick="handleLogout()" class="menu-item" style="margin-top: auto; color: var(--danger);">
+                    <i class="fa-solid fa-power-off"></i> <span>Sign Out</span>
+                </button>
             </nav>
 
             <div class="sidebar-user">
@@ -374,6 +380,63 @@
                             <tbody id="applied-table-body">
                                 <tr>
                                     <td colspan="5" class="table-empty">Loading submitted forms history...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PANEL 5: MY WALLET -->
+            <section id="panel-wallet" class="dashboard-panel">
+                <div class="panel-header">
+                    <h2>My Wallet</h2>
+                    <p>Deposit funds to automatically pay examination fees. Zero friction checkouts.</p>
+                </div>
+
+                <div class="workspace-card" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px;">
+                    <!-- Balance Display Card -->
+                    <div style="background: linear-gradient(135deg, rgba(79, 142, 247, 0.1) 0%, rgba(79, 142, 247, 0.02) 100%); border: 1px solid var(--card-border); padding: 32px; border-radius: 16px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+                        <span style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-secondary); letter-spacing: 1px; margin-bottom: 8px;">Available Balance</span>
+                        <div style="font-family: var(--font-heading); font-size: 3rem; font-weight: 800; color: white; line-height: 1;" id="wallet-balance-display">₹0.00</div>
+                        <span style="font-size: 0.7rem; color: var(--text-muted); margin-top: 8px;"><i class="fa-solid fa-circle-check" style="color: var(--success);"></i> Wallet Active (INR)</span>
+                    </div>
+
+                    <!-- Deposit Form -->
+                    <div style="display: flex; flex-direction: column; justify-content: center;">
+                        <h4 style="font-family: var(--font-heading); font-size: 1.15rem; margin-bottom: 16px; font-weight: 600;">Deposit Funds</h4>
+                        <form id="wallet-deposit-form" onsubmit="handleWalletDepositSubmit(event)">
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label for="deposit-amount"><i class="fa-solid fa-indian-rupee-sign"></i> Amount in INR (min ₹10)</label>
+                                <input type="number" id="deposit-amount" min="10" required placeholder="e.g. 500">
+                            </div>
+                            <button type="submit" id="btn-deposit-submit" class="btn btn-primary btn-block">
+                                <span>Add Funds</span> <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Transaction Ledger -->
+                <div class="dashboard-section-title">
+                    <h3>Transaction History</h3>
+                    <p>Recent credits and debits recorded on your secure ledger.</p>
+                </div>
+                <div class="workspace-card">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Transaction ID</th>
+                                    <th>Type</th>
+                                    <th>Amount</th>
+                                    <th>Description</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wallet-table-body">
+                                <tr>
+                                    <td colspan="5" class="table-empty">No transactions recorded yet.</td>
                                 </tr>
                             </tbody>
                         </table>
