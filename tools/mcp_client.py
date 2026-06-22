@@ -11,16 +11,16 @@ logger = logging.getLogger("SwarmMCPClient")
 class SwarmMCPClient:
     """
     Client manager that launches local MCP servers and routes tool requests.
-    Supports connecting to the StealthBrowser MCP Server.
+    Supports connecting to any local MCP Server.
     """
-    def __init__(self):
+    def __init__(self, server_script: str = "mcp_browser_server.py"):
         workspace_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         env = os.environ.copy()
         env["PYTHONPATH"] = workspace_root + os.pathsep + env.get("PYTHONPATH", "")
         
         self.server_params = StdioServerParameters(
             command=sys.executable,
-            args=[os.path.join(os.path.dirname(__file__), "mcp_browser_server.py")],
+            args=[os.path.join(os.path.dirname(__file__), server_script)],
             env=env
         )
         self.stdio_transport = None

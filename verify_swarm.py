@@ -476,6 +476,123 @@ class TestMultiAgentSwarm(unittest.TestCase):
 
         loop.run_until_complete(run_test())
 
+    def test_mcp_vault_server_tool_calls(self):
+        """
+        Verify that the SwarmMCPClient connects to the Vault MCP Server and stores/retrieves secrets.
+        """
+        from tools.mcp_client import SwarmMCPClient
+        loop = asyncio.get_event_loop()
+        
+        async def run_test():
+            async with SwarmMCPClient(server_script="mcp_vault_server.py") as mcp_client:
+                # Store secret
+                res_store = await mcp_client.call_tool("vault_store_secret", {
+                    "key": "test_aadhaar",
+                    "value": "9999-8888-7777",
+                    "passphrase": "vault_secret_pass"
+                })
+                self.assertIn("SUCCESS", res_store.content[0].text)
+                
+                # Retrieve secret
+                res_retrieve = await mcp_client.call_tool("vault_retrieve_secret", {
+                    "key": "test_aadhaar",
+                    "passphrase": "vault_secret_pass"
+                })
+                self.assertEqual("9999-8888-7777", res_retrieve.content[0].text)
+                
+                # Retrieve with wrong passphrase should fail/error
+                res_retrieve_fail = await mcp_client.call_tool("vault_retrieve_secret", {
+                    "key": "test_aadhaar",
+                    "passphrase": "wrong_pass"
+                })
+                self.assertIn("ERROR", res_retrieve_fail.content[0].text)
+                
+                # Clear secrets
+                res_clear = await mcp_client.call_tool("vault_clear_secrets", {})
+                self.assertIn("SUCCESS", res_clear.content[0].text)
+                
+        loop.run_until_complete(run_test())
+
+    def test_mcp_ocr_server_tool_calls(self):
+        """
+        Verify that the SwarmMCPClient connects to the OCR MCP Server and parses documents.
+        """
+        from tools.mcp_client import SwarmMCPClient
+        import json
+        loop = asyncio.get_event_loop()
+        
+        async def run_test():
+            async with SwarmMCPClient(server_script="mcp_ocr_server.py") as mcp_client:
+                # Test simulated OCR extraction for Aadhaar
+                res_aadhaar = await mcp_client.call_tool("ocr_extract_text", {
+                    "file_path": "my_aadhaar_scan.jpg"
+                })
+                data_aadhaar = json.loads(res_aadhaar.content[0].text)
+                self.assertEqual(data_aadhaar["document_type"], "Aadhaar Card")
+                self.assertEqual(data_aadhaar["extracted_fields"]["aadhaar_number"], "1234-5678-9012")
+                
+                # Test verification formatting checks
+                res_verify = await mcp_client.call_tool("ocr_verify_document_format", {
+                    "file_path": "signature.png",
+                    "expected_type": "signature_image"
+                })
+                data_verify = json.loads(res_verify.content[0].text)
+                self.assertTrue(data_verify["valid"])
+
+        loop.run_until_complete(run_test())
+
+    def test_mcp_captcha_server_tool_calls(self):
+        """
+        Verify that the SwarmMCPClient connects to the Captcha Solving MCP Server.
+        """
+        from tools.mcp_client import SwarmMCPClient
+        loop = asyncio.get_event_loop()
+        
+        async def run_test():
+            async with SwarmMCPClient(server_script="mcp_captcha_server.py") as mcp_client:
+                # Solve captcha mock mode
+                res_solve = await mcp_client.call_tool("captcha_solve_image", {
+                    "image_path": "captcha.png"
+                })
+                self.assertIn("SUCCESS", res_solve.content[0].text)
+                self.assertIn("SOLVED_MOCK_CAPTCHA", res_solve.content[0].text)
+
+        loop.run_until_complete(run_test())
+
+    def test_mcp_alert_server_tool_calls(self):
+        """
+        Verify that the SwarmMCPClient connects to the Alert/Communication MCP Server and dispatches notifications.
+        """
+        from tools.mcp_client import SwarmMCPClient
+        loop = asyncio.get_event_loop()
+        
+        async def run_test():
+            async with SwarmMCPClient(server_script="mcp_alert_server.py") as mcp_client:
+                # Slack alert mock
+                res_slack = await mcp_client.call_tool("alert_send_slack", {
+                    "webhook_url": "your-slack-webhook-url-here",
+                    "message": "Form submission pending payment!",
+                    "channel": "#general"
+                })
+                self.assertIn("SUCCESS", res_slack.content[0].text)
+                
+                # WhatsApp alert mock
+                res_wa = await mcp_client.call_tool("alert_send_whatsapp", {
+                    "phone": "+919999988888",
+                    "message": "Form submitted successfully!"
+                })
+                self.assertIn("SUCCESS", res_wa.content[0].text)
+                
+                # Email alert mock
+                res_email = await mcp_client.call_tool("alert_send_email", {
+                    "recipient": "user@example.com",
+                    "subject": "Form Filling Status Update",
+                    "body": "Your form has been successfully processed."
+                })
+                self.assertIn("SUCCESS", res_email.content[0].text)
+
+        loop.run_until_complete(run_test())
+
     def test_indian_exam_rag_retrieval(self):
         """
         Verify that seeded Indian government exam portal details are searchable in the RAG store.

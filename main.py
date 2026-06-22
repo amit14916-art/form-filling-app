@@ -316,7 +316,7 @@ FALLBACK_JOBS = [
         "category": "Railway Jobs"
     }
 ]
-
+   
 async def fetch_rss_jobs() -> List[dict]:
     try:
         url = "https://www.freejobalert.com/feed/"

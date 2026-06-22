@@ -11,6 +11,11 @@ logger = logging.getLogger("Database")
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./formfill.db")
 
+# Detect placeholder values in Supabase connection string and fallback to local SQLite
+if "your-supabase-project" in DATABASE_URL or "your-supabase-password" in DATABASE_URL:
+    logger.warning("Supabase placeholder detected in DATABASE_URL. Falling back to local SQLite database.")
+    DATABASE_URL = "sqlite+aiosqlite:///./formfill.db"
+
 engine = create_async_engine(DATABASE_URL, echo=False)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 

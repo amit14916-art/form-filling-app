@@ -1,3 +1,5 @@
+import os
+import sys
 import asyncio
 import logging
 from datetime import date, datetime
@@ -244,13 +246,26 @@ async def apply_exam(
     is_testing = any("verify_phase" in arg or "verify_swarm" in arg for arg in sys.argv) or os.getenv("TESTING") == "true"
     
     if not is_testing:
+        # Fast socket check to verify Redis is running before dispatching to Celery
+        import socket
+        redis_alive = False
         try:
-            from celery_worker import run_apply_task
-            # Dispatch Celery background task
-            run_apply_task.delay(task_id, user_data, exam_data)
-            logger.info(f"Dispatched task {task_id} to Celery queue.")
-        except Exception as e:
-            logger.warning(f"Failed to dispatch to Celery: {e}. Falling back to FastAPI BackgroundTasks.")
+            s = socket.create_connection(("localhost", 6379), timeout=0.2)
+            s.close()
+            redis_alive = True
+        except Exception:
+            pass
+
+        if redis_alive:
+            try:
+                from celery_worker import run_apply_task
+                run_apply_task.apply_async(args=(task_id, user_data, exam_data), retry=False)
+                logger.info(f"Dispatched task {task_id} to Celery queue.")
+            except Exception as e:
+                logger.warning(f"Failed to dispatch to Celery: {e}. Falling back to FastAPI BackgroundTasks.")
+                background_tasks.add_task(run_application_bg, task_id, user_data, exam_data)
+        else:
+            logger.info("Redis is offline. Falling back to FastAPI BackgroundTasks.")
             background_tasks.add_task(run_application_bg, task_id, user_data, exam_data)
     else:
         logger.info(f"Running in test/mock environment. Running locally via BackgroundTasks.")

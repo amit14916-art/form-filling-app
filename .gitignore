@@ -10,4 +10,4 @@ venv/
 .vscode/
 uploads/
 *.db
-
+scratch/
