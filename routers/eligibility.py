@@ -248,13 +248,18 @@ async def apply_exam(
     if not is_testing:
         # Fast socket check to verify Redis is running before dispatching to Celery
         import socket
+        from urllib.parse import urlparse
         redis_alive = False
         try:
-            s = socket.create_connection(("localhost", 6379), timeout=0.2)
+            redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+            parsed = urlparse(redis_url)
+            host = parsed.hostname or "localhost"
+            port = parsed.port or 6379
+            s = socket.create_connection((host, port), timeout=0.5)
             s.close()
             redis_alive = True
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Redis connection check failed on {host}:{port} - {e}")
 
         if redis_alive:
             try:

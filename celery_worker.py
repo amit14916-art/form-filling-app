@@ -1,8 +1,12 @@
 import os
+import sys
 import asyncio
 import logging
 from celery import Celery
 from dotenv import load_dotenv
+
+# Add workspace directory to python search path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Load environment variables
 load_dotenv()

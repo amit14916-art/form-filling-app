@@ -681,6 +681,48 @@ class TestMultiAgentSwarm(unittest.TestCase):
         # Consensus should fail because the high reputation agent voted False, overruling the others
         self.assertFalse(passed_err)
 
+    def test_mcp_supabase_server_tool_calls(self):
+        """
+        Verify that the SwarmMCPClient connects to the Supabase MCP Server and executes queries and lookup tools.
+        """
+        from tools.mcp_client import SwarmMCPClient
+        loop = asyncio.get_event_loop()
+        
+        async def run_test():
+            async with SwarmMCPClient(server_script="mcp_supabase_server.py") as mcp_client:
+                # 1. Execute SQL tool (SELECT 1)
+                res_sql = await mcp_client.call_tool("supabase_execute_query", {
+                    "sql_query": "SELECT 1 as test_col;"
+                })
+                self.assertIn("test_col", res_sql.content[0].text)
+                self.assertIn("1", res_sql.content[0].text)
+                
+                # 2. Get user (non-existent should return user not found)
+                res_user = await mcp_client.call_tool("supabase_get_user_by_email", {
+                    "email": "does_not_exist_mcp_test@example.com"
+                })
+                self.assertIn("not found", res_user.content[0].text)
+                
+                # 3. Get profile (non-existent should return profile not found)
+                res_prof = await mcp_client.call_tool("supabase_get_user_profile", {
+                    "user_id": 999999
+                })
+                self.assertIn("not found", res_prof.content[0].text)
+                
+                # 4. Get exam applications
+                res_apps = await mcp_client.call_tool("supabase_get_exam_applications", {
+                    "user_id": 999999
+                })
+                self.assertIn("No applications found", res_apps.content[0].text)
+                
+                # 5. Get wallet balance
+                res_wallet = await mcp_client.call_tool("supabase_get_wallet_balance", {
+                    "user_id": 999999
+                })
+                self.assertIn("Wallet not found", res_wallet.content[0].text)
+
+        loop.run_until_complete(run_test())
+
 
 if __name__ == "__main__":
     unittest.main()
