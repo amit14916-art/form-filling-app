@@ -54,13 +54,17 @@ def run_apply_task(task_id: str, user_data: dict, exam_data: dict):
             
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            raise RuntimeError("Loop is closed")
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
     try:
         loop.run_until_complete(execute())
         logger.info(f"Successfully completed run_apply_task for task_id: {task_id}")
     except Exception as e:
         logger.error(f"Failed executing run_apply_task: {e}")
         raise e
-    finally:
-        loop.close()
