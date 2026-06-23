@@ -20,10 +20,11 @@ from routers.eligibility import router as eligibility_router
 from routers.dashboard import router as dashboard_router
 from routers.payment import router as payment_router
 
+import os
 logger = logging.getLogger("SarkariSwarm")
 
 # Global Orchestrator Instance
-orchestrator = CEOOrchestrator()
+orchestrator = CEOOrchestrator(redis_url=os.getenv("REDIS_URL", "redis://localhost:6379"))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
