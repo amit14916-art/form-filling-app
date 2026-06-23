@@ -52,7 +52,8 @@ def run_apply_task(task_id: str, user_data: dict, exam_data: dict):
         async with AsyncSessionLocal() as session:
             await ApplyService.run_application(task_id, user_data, exam_data, session)
             
-    # Run the async loop inside the synchronous Celery worker thread/process
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
