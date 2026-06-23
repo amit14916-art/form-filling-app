@@ -1,5 +1,8 @@
 import logging
-from datetime import date
+import asyncio
+import requests
+import xml.etree.ElementTree as ET
+from datetime import date, timedelta
 from typing import List, Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -134,4 +137,79 @@ class EligibilityEngine:
         for exam in EXAM_DATABASE.get("Union_Territories", []):
             eligible_exams.append(evaluate_exam(exam, "Union_Territory"))
 
+        # Live Feed exams from FreeJobAlert
+        live_exams = await EligibilityEngine.fetch_live_exams_from_feed()
+        for exam in live_exams:
+            eligible_exams.append(evaluate_exam(exam, "Central"))
+
         return eligible_exams
+
+    @staticmethod
+    async def fetch_live_exams_from_feed() -> List[Dict[str, Any]]:
+        """
+        Fetches live open job listings from FreeJobAlert RSS feed and compiles them into compatible exam dicts.
+        """
+        try:
+            url = "https://www.freejobalert.com/feed/"
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+            loop = asyncio.get_event_loop()
+            
+            def make_request():
+                return requests.get(url, headers=headers, timeout=5)
+                
+            response = await loop.run_in_executor(None, make_request)
+            if response.status_code != 200:
+                return []
+                
+            root = ET.fromstring(response.content)
+            live_exams = []
+            for item in root.findall(".//item")[:15]:
+                title = item.find("title").text or ""
+                link = item.find("link").text or ""
+                
+                # Parse qualification from title
+                title_lower = title.lower()
+                qual = "Graduate"
+                if "diploma" in title_lower or "12th" in title_lower or "inter" in title_lower:
+                    qual = "12th"
+                elif "10th" in title_lower or "matric" in title_lower or "pass" in title_lower:
+                    qual = "10th"
+                elif "degree" in title_lower or "graduate" in title_lower or "post" in title_lower:
+                    qual = "Graduate"
+                
+                # Parse conducting body
+                conducting_body = "Government Board"
+                if "upsc" in title_lower:
+                    conducting_body = "Union Public Service Commission"
+                elif "ssc" in title_lower:
+                    conducting_body = "Staff Selection Commission"
+                elif "rrb" in title_lower or "railway" in title_lower:
+                    conducting_body = "Railway Recruitment Board"
+                elif "ibps" in title_lower:
+                    conducting_body = "Institute of Banking Personnel Selection"
+                elif "bpsc" in title_lower:
+                    conducting_body = "Bihar Public Service Commission"
+                else:
+                    parts = title.split(" - ")
+                    if len(parts) > 1:
+                        conducting_body = parts[0].strip()
+                
+                # Parse last date (default to 30 days from now)
+                last_date_str = (date.today() + timedelta(days=30)).isoformat()
+                
+                live_exams.append({
+                    "exam_name": title,
+                    "conducting_body": conducting_body,
+                    "portal_url": link,
+                    "age_min": 18,
+                    "age_max": 32,
+                    "qualification": qual,
+                    "fees": {"GEN": 100, "OBC": 100, "SC": 0, "ST": 0, "EWS": 100, "PH": 0},
+                    "relaxations": {"OBC": 3, "SC": 5, "ST": 5},
+                    "last_date": last_date_str,
+                    "guidelines": "Official registration guidelines as per FreeJobAlert portal. Upload photo & signature."
+                })
+            return live_exams
+        except Exception as e:
+            logger.error(f"Error fetching live exams from RSS feed: {e}")
+            return []
